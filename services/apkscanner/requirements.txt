@@ -1,0 +1,6 @@
+flask==2.3.2
+androguard==4.2.0
+sqlalchemy==1.4.52
+python-magic==0.4.27
+gunicorn==20.1.0
+

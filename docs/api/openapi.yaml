@@ -1,0 +1,76 @@
+openapi: 3.0.3
+info:
+  title: MobileSec-MS API
+  version: 0.1.0
+
+paths:
+  /scan:
+    post:
+      summary: Upload APK or start scan by URL
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: APK file to scan
+                url:
+                  type: string
+                  description: URL to APK
+      responses:
+        "202":
+          description: Scan started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    example: "job-123456"
+                  status:
+                    type: string
+                    example: "queued"
+  
+  /scan/{job_id}:
+    get:
+      summary: Get scan result
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [queued, running, done, failed]
+                  findings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: {type: string}
+                        severity: {type: string}
+                        title: {type: string}
+                        description: {type: string}
+                        location: 
+                          type: object
+                          properties:
+                            file: {type: string}
+                            line: {type: integer}
+                        recommendation: {type: string}
+
