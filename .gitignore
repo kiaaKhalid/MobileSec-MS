@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Docker
+.docker/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# Tests
+.pytest_cache/
+coverage/
+*.cover
+
+# Build artifacts
+*.apk
+*.ipa
+examples/apks/*.apk
+!examples/apks/.gitkeep
+
+# Reports
+reports/
+*.pdf
+security-report*.json
+
+# Temporary
+tmp/
+temp/
+*.tmp

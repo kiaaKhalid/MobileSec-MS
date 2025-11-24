@@ -1,0 +1,15 @@
+{
+  "name": "reportgen",
+  "version": "1.0.0",
+  "description": "Security report generation service",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.4.0",
+    "jspdf": "^2.5.1"
+  }
+}

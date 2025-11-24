@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify
-import os, uuid, traceback
-from androguard.core.bytecodes.apk import APK
-from androguard.core.bytecodes.dvm import DalvikVMFormat
-from utils import init_db, save_scan, get_scan_result
+from flask_cors import CORS
+import os, uuid, re, hashlib, traceback
+from androguard.core.apk import APK
+from androguard.core.dex import DEX
+from utils import init_db, save_result, get_result
 from signatures import scan_string
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 PORT = int(os.environ.get("PORT", 8002)) # Port 8002 pour SecretHunter
 STORAGE_DIR = "/app/uploads"
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -18,32 +20,18 @@ def extract_and_scan(filepath):
     try:
         a = APK(filepath)
         
-        # 1. Scan des ressources (strings.xml, etc.)
-        # Androguard décrypte le binaire XML automatiquement
-        resources_check = ["app_name", "google_api_key", "firebase_database_url"] # Exemples de clés ressources
-        pkg = a.get_package()
-        
-        # On récupère toutes les chaînes définies dans resources.arsc
-        res_parser = a.get_android_resources()
-        if res_parser:
+        # Scan du code (Classes.dex) - C'est là que sont les secrets hardcodés
+        for dex_bytes in a.get_all_dex():
             try:
-                # Récupération brute des strings ressources
-                for package_name in res_parser.get_packages_names():
-                    pkg_obj = res_parser.get_packages_names()[package_name]
-                    # (Simplification pour MVP: on ne parcourt pas tout l'arbre complexe, 
-                    # on compte sur le scan des classes DEX qui contiennent souvent les secrets hardcodés)
-            except Exception:
-                pass
-
-        # 2. Scan du code (Classes.dex) - C'est là que sont les secrets hardcodés
-        for dex in a.get_all_dex():
-            d = DalvikVMFormat(dex)
-            # d.get_strings() retourne toutes les constantes string du code
-            for s in d.get_strings():
-                if s and len(s) > 5: # Ignore les chaines trop courtes
-                    res = scan_string(s)
-                    if res:
-                        findings.extend(res)
+                d = DEX(dex_bytes)
+                # d.get_strings() retourne toutes les constantes string du code
+                for s in d.get_strings():
+                    if s and len(s) > 5: # Ignore les chaines trop courtes
+                        res = scan_string(s)
+                        if res:
+                            findings.extend(res)
+            except Exception as e:
+                print(f"Error processing DEX: {e}")
                         
     except Exception as e:
         print(f"Error extracting APK: {e}")
@@ -76,11 +64,11 @@ def scan():
         f.save(save_path)
 
         job_id = "secret-" + uuid.uuid4().hex
-        save_scan(job_id, filename, "running", [])
+        save_result(job_id, filename, "running", [])
 
         # Analyse synchrone (pour MVP)
         secrets = extract_and_scan(save_path)
-        save_scan(job_id, filename, "done", secrets)
+        save_result(job_id, filename, "done", secrets)
 
         return jsonify({"job_id": job_id, "status": "done", "secrets_count": len(secrets)}), 200
 
@@ -91,8 +79,8 @@ def scan():
             os.remove(save_path)
 
 @app.route("/scan/<job_id>", methods=["GET"])
-def get_result(job_id):
-    res = get_scan_result(job_id)
+def get_scan(job_id):
+    res = get_result(job_id)
     if not res:
         return jsonify({"error": "not found"}), 404
     return jsonify(res)

@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 import os, tempfile, uuid, traceback
-from androguard.core.bytecodes.apk import APK
+from androguard.core.apk import APK
 from xml.etree import ElementTree as ET
 from utils import init_db, save_scan_result, update_status, get_scan
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 PORT = int(os.environ.get("PORT", 8001))
 STORAGE_DIR = os.environ.get("APK_STORAGE_DIR", "/app/uploads")
 os.makedirs(STORAGE_DIR, exist_ok=True)

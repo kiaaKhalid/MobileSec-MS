@@ -1,0 +1,162 @@
+version: '3.8'
+
+services:
+  apkscanner:
+    build: ./services/apkscanner
+    container_name: mobilesec-apkscanner
+    ports:
+      - "8001:8001"
+    volumes:
+      - apk-storage:/app/storage
+    environment:
+      - PORT=8001
+      - APK_DB_PATH=/app/storage/apkscanner.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+
+  secrethunter:
+    build: ./services/secrethunter
+    container_name: mobilesec-secrethunter
+    ports:
+      - "8002:8002"
+    volumes:
+      - secret-storage:/app/storage
+    environment:
+      - PORT=8002
+      - DB_PATH=/app/storage/secrethunter.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+
+  cryptocheck:
+    build: ./services/cryptocheck
+    container_name: mobilesec-cryptocheck
+    ports:
+      - "8003:8003"
+    volumes:
+      - crypto-storage:/app/storage
+    environment:
+      - PORT=8003
+      - DB_PATH=/app/storage/cryptocheck.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+
+  networkinspector:
+    build: ./services/networkinspector
+    container_name: mobilesec-networkinspector
+    ports:
+      - "8004:8004"
+    volumes:
+      - network-storage:/app/storage
+    environment:
+      - PORT=8004
+      - DB_PATH=/app/storage/networkinspector.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+
+  reportgen:
+    build: ./services/reportgen
+    container_name: mobilesec-reportgen
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+      - APKSCANNER_URL=http://apkscanner:8001
+      - SECRETHUNTER_URL=http://secrethunter:8002
+      - CRYPTOCHECK_URL=http://cryptocheck:8003
+      - NETWORKINSPECTOR_URL=http://networkinspector:8004
+    depends_on:
+      - apkscanner
+      - secrethunter
+      - cryptocheck
+      - networkinspector
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+
+  fixsuggest:
+    build: ./services/fixsuggest
+    container_name: mobilesec-fixsuggest
+    ports:
+      - "8006:8006"
+    environment:
+      - PORT=8006
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+
+  ciconnector:
+    build: ./services/ciconnector
+    container_name: mobilesec-ciconnector
+    ports:
+      - "8007:8007"
+    environment:
+      - PORT=8007
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost
+    depends_on:
+      - apkscanner
+      - secrethunter
+      - cryptocheck
+      - networkinspector
+      - reportgen
+      - fixsuggest
+      - ciconnector
+    networks:
+      - mobilesec-network
+
+volumes:
+  apk-storage:
+  secret-storage:
+  crypto-storage:
+  network-storage:
+
+networks:
+  mobilesec-network:
+    driver: bridge

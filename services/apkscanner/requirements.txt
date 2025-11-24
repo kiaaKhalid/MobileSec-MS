@@ -1,6 +1,7 @@
 flask==2.3.2
-androguard==4.2.0
+androguard==4.1.3
 sqlalchemy==1.4.52
-python-magic==0.4.27
 gunicorn==20.1.0
+flask-cors==4.0.0
+python-magic==0.4.27
 
