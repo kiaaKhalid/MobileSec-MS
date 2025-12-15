@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.0.0">
+  <bpmn:process id="SecurityAnalysisProcess" name="Analyse de Sécurité APK - MobileSec-MS" isExecutable="true">
+    <bpmn:documentation>Processus complet d'analyse de sécurité d'une application Android (APK)</bpmn:documentation>
+    
+    <bpmn:startEvent id="StartEvent_1" name="Début">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:userTask id="Task_Upload" name="Télécharger APK">
+      <bpmn:documentation>L'utilisateur télécharge un fichier APK via l'interface React (Port 5173)</bpmn:documentation>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:serviceTask id="Task_Validate" name="Valider le fichier">
+      <bpmn:documentation>Vérifications: Format .apk, Taille ≤ 100MB, Signature valide</bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_Valid" name="APK valide?">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_Valid_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Valid_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:endEvent id="End_Error" name="Erreur validation">
+      <bpmn:incoming>Flow_Valid_No</bpmn:incoming>
+      <bpmn:errorEventDefinition />
+    </bpmn:endEvent>
+    
+    <bpmn:serviceTask id="Task_CreateJob" name="Créer job_id">
+      <bpmn:documentation>Génération d'un UUID unique pour tracer l'analyse</bpmn:documentation>
+      <bpmn:incoming>Flow_Valid_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:parallelGateway id="Gateway_ParallelStart" name="Lancer analyses">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5a</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5b</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5c</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5d</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    
+    <bpmn:serviceTask id="Task_APKScanner" name="APKScanner&#10;(Port 8001)">
+      <bpmn:documentation>Désassemblage APK, extraction manifest, permissions, composants exportés, flags de sécurité (debuggable, allowBackup, cleartext)</bpmn:documentation>
+      <bpmn:incoming>Flow_5a</bpmn:incoming>
+      <bpmn:outgoing>Flow_6a</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_SecretHunter" name="SecretHunter&#10;(Port 8002)">
+      <bpmn:documentation>Détection de secrets: API keys (AWS, Stripe, Google), tokens OAuth, mots de passe hardcodés, analyse d'entropie</bpmn:documentation>
+      <bpmn:incoming>Flow_5b</bpmn:incoming>
+      <bpmn:outgoing>Flow_6b</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_CryptoCheck" name="CryptoCheck&#10;(Port 8003)">
+      <bpmn:documentation>Vérification cryptographique: détection DES/MD5/SHA1, AES/ECB, clés hardcodées, Random non sécurisé, mapping CWE</bpmn:documentation>
+      <bpmn:incoming>Flow_5c</bpmn:incoming>
+      <bpmn:outgoing>Flow_6c</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_NetworkInspector" name="NetworkInspector&#10;(Port 8004)">
+      <bpmn:documentation>Analyse réseau: détection HTTP cleartext, TLS faible, absence de certificate pinning, vérification network_security_config.xml</bpmn:documentation>
+      <bpmn:incoming>Flow_5d</bpmn:incoming>
+      <bpmn:outgoing>Flow_6d</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:parallelGateway id="Gateway_ParallelEnd" name="Attendre fin">
+      <bpmn:incoming>Flow_6a</bpmn:incoming>
+      <bpmn:incoming>Flow_6b</bpmn:incoming>
+      <bpmn:incoming>Flow_6c</bpmn:incoming>
+      <bpmn:incoming>Flow_6d</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    
+    <bpmn:serviceTask id="Task_ReportGen" name="ReportGen&#10;(Port 8005)">
+      <bpmn:documentation>Agrégation des résultats de tous les microservices, calcul du score de sécurité (0-100), mapping OWASP MASVS</bpmn:documentation>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_Format" name="Format?">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_JSON</bpmn:outgoing>
+      <bpmn:outgoing>Flow_PDF</bpmn:outgoing>
+      <bpmn:outgoing>Flow_SARIF</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:serviceTask id="Task_JSON" name="Générer JSON">
+      <bpmn:incoming>Flow_JSON</bpmn:incoming>
+      <bpmn:outgoing>Flow_9a</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_PDF" name="Générer PDF">
+      <bpmn:incoming>Flow_PDF</bpmn:incoming>
+      <bpmn:outgoing>Flow_9b</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_SARIF" name="Générer SARIF">
+      <bpmn:documentation>Format SARIF 2.1.0 pour intégration CI/CD (GitHub Security, GitLab Security Dashboard)</bpmn:documentation>
+      <bpmn:incoming>Flow_SARIF</bpmn:incoming>
+      <bpmn:outgoing>Flow_9c</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_FormatMerge">
+      <bpmn:incoming>Flow_9a</bpmn:incoming>
+      <bpmn:incoming>Flow_9b</bpmn:incoming>
+      <bpmn:incoming>Flow_9c</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:serviceTask id="Task_FixSuggest" name="FixSuggest&#10;(Port 8006)">
+      <bpmn:documentation>Génération de suggestions de correctifs conformes OWASP MASVS, exemples de code sécurisé, références CWE</bpmn:documentation>
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:userTask id="Task_Display" name="Afficher résultats">
+      <bpmn:documentation>Affichage du rapport complet dans l'interface React avec score, vulnérabilités, recommandations</bpmn:documentation>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_Action" name="Action?">
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+      <bpmn:outgoing>Flow_Export</bpmn:outgoing>
+      <bpmn:outgoing>Flow_CI</bpmn:outgoing>
+      <bpmn:outgoing>Flow_End</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:serviceTask id="Task_Export" name="Exporter rapport">
+      <bpmn:incoming>Flow_Export</bpmn:incoming>
+      <bpmn:outgoing>Flow_13a</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:userTask id="Task_SetupCI" name="Configurer CI/CD">
+      <bpmn:documentation>Intégration avec GitHub Actions, GitLab CI, Jenkins via CIConnector (Port 8007)</bpmn:documentation>
+      <bpmn:incoming>Flow_CI</bpmn:incoming>
+      <bpmn:outgoing>Flow_13b</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_ActionMerge">
+      <bpmn:incoming>Flow_13a</bpmn:incoming>
+      <bpmn:incoming>Flow_13b</bpmn:incoming>
+      <bpmn:incoming>Flow_End</bpmn:incoming>
+      <bpmn:outgoing>Flow_14</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:endEvent id="End_Success" name="Fin (succès)">
+      <bpmn:incoming>Flow_14</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Upload" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Upload" targetRef="Task_Validate" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Validate" targetRef="Gateway_Valid" />
+    <bpmn:sequenceFlow id="Flow_Valid_Yes" name="Oui" sourceRef="Gateway_Valid" targetRef="Task_CreateJob" />
+    <bpmn:sequenceFlow id="Flow_Valid_No" name="Non" sourceRef="Gateway_Valid" targetRef="End_Error" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_CreateJob" targetRef="Gateway_ParallelStart" />
+    <bpmn:sequenceFlow id="Flow_5a" sourceRef="Gateway_ParallelStart" targetRef="Task_APKScanner" />
+    <bpmn:sequenceFlow id="Flow_5b" sourceRef="Gateway_ParallelStart" targetRef="Task_SecretHunter" />
+    <bpmn:sequenceFlow id="Flow_5c" sourceRef="Gateway_ParallelStart" targetRef="Task_CryptoCheck" />
+    <bpmn:sequenceFlow id="Flow_5d" sourceRef="Gateway_ParallelStart" targetRef="Task_NetworkInspector" />
+    <bpmn:sequenceFlow id="Flow_6a" sourceRef="Task_APKScanner" targetRef="Gateway_ParallelEnd" />
+    <bpmn:sequenceFlow id="Flow_6b" sourceRef="Task_SecretHunter" targetRef="Gateway_ParallelEnd" />
+    <bpmn:sequenceFlow id="Flow_6c" sourceRef="Task_CryptoCheck" targetRef="Gateway_ParallelEnd" />
+    <bpmn:sequenceFlow id="Flow_6d" sourceRef="Task_NetworkInspector" targetRef="Gateway_ParallelEnd" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Gateway_ParallelEnd" targetRef="Task_ReportGen" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_ReportGen" targetRef="Gateway_Format" />
+    <bpmn:sequenceFlow id="Flow_JSON" name="JSON" sourceRef="Gateway_Format" targetRef="Task_JSON" />
+    <bpmn:sequenceFlow id="Flow_PDF" name="PDF" sourceRef="Gateway_Format" targetRef="Task_PDF" />
+    <bpmn:sequenceFlow id="Flow_SARIF" name="SARIF" sourceRef="Gateway_Format" targetRef="Task_SARIF" />
+    <bpmn:sequenceFlow id="Flow_9a" sourceRef="Task_JSON" targetRef="Gateway_FormatMerge" />
+    <bpmn:sequenceFlow id="Flow_9b" sourceRef="Task_PDF" targetRef="Gateway_FormatMerge" />
+    <bpmn:sequenceFlow id="Flow_9c" sourceRef="Task_SARIF" targetRef="Gateway_FormatMerge" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Gateway_FormatMerge" targetRef="Task_FixSuggest" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_FixSuggest" targetRef="Task_Display" />
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_Display" targetRef="Gateway_Action" />
+    <bpmn:sequenceFlow id="Flow_Export" name="Exporter" sourceRef="Gateway_Action" targetRef="Task_Export" />
+    <bpmn:sequenceFlow id="Flow_CI" name="CI/CD" sourceRef="Gateway_Action" targetRef="Task_SetupCI" />
+    <bpmn:sequenceFlow id="Flow_End" name="Terminer" sourceRef="Gateway_Action" targetRef="Gateway_ActionMerge" />
+    <bpmn:sequenceFlow id="Flow_13a" sourceRef="Task_Export" targetRef="Gateway_ActionMerge" />
+    <bpmn:sequenceFlow id="Flow_13b" sourceRef="Task_SetupCI" targetRef="Gateway_ActionMerge" />
+    <bpmn:sequenceFlow id="Flow_14" sourceRef="Gateway_ActionMerge" targetRef="End_Success" />
+  </bpmn:process>
+  
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="SecurityAnalysisProcess">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="145" width="31" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Upload_di" bpmnElement="Task_Upload">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Validate_di" bpmnElement="Task_Validate">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Valid_di" bpmnElement="Gateway_Valid" isMarkerVisible="true">
+        <dc:Bounds x="565" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="558" y="71" width="64" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_Error_di" bpmnElement="End_Error">
+        <dc:Bounds x="572" y="212" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="550" y="255" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_CreateJob_di" bpmnElement="Task_CreateJob">
+        <dc:Bounds x="680" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ParallelStart_di" bpmnElement="Gateway_ParallelStart">
+        <dc:Bounds x="845" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="828" y="71" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_APKScanner_di" bpmnElement="Task_APKScanner">
+        <dc:Bounds x="960" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_SecretHunter_di" bpmnElement="Task_SecretHunter">
+        <dc:Bounds x="960" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_CryptoCheck_di" bpmnElement="Task_CryptoCheck">
+        <dc:Bounds x="960" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_NetworkInspector_di" bpmnElement="Task_NetworkInspector">
+        <dc:Bounds x="960" y="440" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ParallelEnd_di" bpmnElement="Gateway_ParallelEnd">
+        <dc:Bounds x="1125" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1112" y="71" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_ReportGen_di" bpmnElement="Task_ReportGen">
+        <dc:Bounds x="1240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Format_di" bpmnElement="Gateway_Format" isMarkerVisible="true">
+        <dc:Bounds x="1405" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1407" y="71" width="45" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_JSON_di" bpmnElement="Task_JSON">
+        <dc:Bounds x="1520" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_PDF_di" bpmnElement="Task_PDF">
+        <dc:Bounds x="1520" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_SARIF_di" bpmnElement="Task_SARIF">
+        <dc:Bounds x="1520" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_FormatMerge_di" bpmnElement="Gateway_FormatMerge" isMarkerVisible="true">
+        <dc:Bounds x="1685" y="95" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_FixSuggest_di" bpmnElement="Task_FixSuggest">
+        <dc:Bounds x="1800" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Display_di" bpmnElement="Task_Display">
+        <dc:Bounds x="1960" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Action_di" bpmnElement="Gateway_Action" isMarkerVisible="true">
+        <dc:Bounds x="2125" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2131" y="71" width="38" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_Export_di" bpmnElement="Task_Export">
+        <dc:Bounds x="2240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_SetupCI_di" bpmnElement="Task_SetupCI">
+        <dc:Bounds x="2240" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ActionMerge_di" bpmnElement="Gateway_ActionMerge" isMarkerVisible="true">
+        <dc:Bounds x="2405" y="95" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_Success_di" bpmnElement="End_Success">
+        <dc:Bounds x="2522" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2507" y="145" width="66" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="565" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Valid_Yes_di" bpmnElement="Flow_Valid_Yes">
+        <di:waypoint x="615" y="120" />
+        <di:waypoint x="680" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="638" y="102" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Valid_No_di" bpmnElement="Flow_Valid_No">
+        <di:waypoint x="590" y="145" />
+        <di:waypoint x="590" y="212" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="596" y="173" width="21" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="780" y="120" />
+        <di:waypoint x="845" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5a_di" bpmnElement="Flow_5a">
+        <di:waypoint x="895" y="120" />
+        <di:waypoint x="960" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5b_di" bpmnElement="Flow_5b">
+        <di:waypoint x="870" y="145" />
+        <di:waypoint x="870" y="240" />
+        <di:waypoint x="960" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5c_di" bpmnElement="Flow_5c">
+        <di:waypoint x="870" y="145" />
+        <di:waypoint x="870" y="360" />
+        <di:waypoint x="960" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5d_di" bpmnElement="Flow_5d">
+        <di:waypoint x="870" y="145" />
+        <di:waypoint x="870" y="480" />
+        <di:waypoint x="960" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6a_di" bpmnElement="Flow_6a">
+        <di:waypoint x="1060" y="120" />
+        <di:waypoint x="1125" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6b_di" bpmnElement="Flow_6b">
+        <di:waypoint x="1060" y="240" />
+        <di:waypoint x="1150" y="240" />
+        <di:waypoint x="1150" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6c_di" bpmnElement="Flow_6c">
+        <di:waypoint x="1060" y="360" />
+        <di:waypoint x="1150" y="360" />
+        <di:waypoint x="1150" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6d_di" bpmnElement="Flow_6d">
+        <di:waypoint x="1060" y="480" />
+        <di:waypoint x="1150" y="480" />
+        <di:waypoint x="1150" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1175" y="120" />
+        <di:waypoint x="1240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1340" y="120" />
+        <di:waypoint x="1405" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_JSON_di" bpmnElement="Flow_JSON">
+        <di:waypoint x="1455" y="120" />
+        <di:waypoint x="1520" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1470" y="102" width="32" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PDF_di" bpmnElement="Flow_PDF">
+        <di:waypoint x="1430" y="145" />
+        <di:waypoint x="1430" y="240" />
+        <di:waypoint x="1520" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1468" y="223" width="23" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SARIF_di" bpmnElement="Flow_SARIF">
+        <di:waypoint x="1430" y="145" />
+        <di:waypoint x="1430" y="360" />
+        <di:waypoint x="1520" y="360" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1460" y="343" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9a_di" bpmnElement="Flow_9a">
+        <di:waypoint x="1620" y="120" />
+        <di:waypoint x="1685" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9b_di" bpmnElement="Flow_9b">
+        <di:waypoint x="1620" y="240" />
+        <di:waypoint x="1710" y="240" />
+        <di:waypoint x="1710" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9c_di" bpmnElement="Flow_9c">
+        <di:waypoint x="1620" y="360" />
+        <di:waypoint x="1710" y="360" />
+        <di:waypoint x="1710" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="1735" y="120" />
+        <di:waypoint x="1800" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="1900" y="120" />
+        <di:waypoint x="1960" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12_di" bpmnElement="Flow_12">
+        <di:waypoint x="2060" y="120" />
+        <di:waypoint x="2125" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Export_di" bpmnElement="Flow_Export">
+        <di:waypoint x="2175" y="120" />
+        <di:waypoint x="2240" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2184" y="102" width="43" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CI_di" bpmnElement="Flow_CI">
+        <di:waypoint x="2150" y="145" />
+        <di:waypoint x="2150" y="240" />
+        <di:waypoint x="2240" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2175" y="223" width="33" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_End_di" bpmnElement="Flow_End">
+        <di:waypoint x="2150" y="145" />
+        <di:waypoint x="2150" y="340" />
+        <di:waypoint x="2430" y="340" />
+        <di:waypoint x="2430" y="145" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2170" y="323" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13a_di" bpmnElement="Flow_13a">
+        <di:waypoint x="2340" y="120" />
+        <di:waypoint x="2405" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13b_di" bpmnElement="Flow_13b">
+        <di:waypoint x="2340" y="240" />
+        <di:waypoint x="2430" y="240" />
+        <di:waypoint x="2430" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_14_di" bpmnElement="Flow_14">
+        <di:waypoint x="2455" y="120" />
+        <di:waypoint x="2522" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

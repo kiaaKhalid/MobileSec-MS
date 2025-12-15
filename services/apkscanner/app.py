@@ -68,15 +68,29 @@ def analyze_apk(filepath):
 
     # --- 3. Flags de sécurité ---
     flags = {
-        "debuggable": a.is_debuggable(),
+        "debuggable": False,
         "allowBackup": None,
         "usesCleartextTraffic": None
     }
+    
+    # Vérification du flag debuggable via l'application flags
+    try:
+        # Méthode alternative pour vérifier debuggable
+        app_info = a.get_AndroidManifest().find('.//application')
+        if app_info is not None:
+            ANDROID_NS = '{http://schemas.android.com/apk/res/android}'
+            debuggable_attr = app_info.get(f"{ANDROID_NS}debuggable")
+            if debuggable_attr:
+                flags["debuggable"] = (debuggable_attr.lower() == "true")
+    except Exception as e:
+        print(f"Warning: Could not check debuggable flag: {e}")
+    
     try:
         if manifest_xml:
             # Recherche simple de chaînes dans le XML brut pour ces flags
-            # C'est une méthode "best effort" si le parsing strict échoue, 
-            # ou on peut réutiliser 'root' si disponible.
+            # Méthode "best effort" alternative
+            if 'android:debuggable="true"' in manifest_xml:
+                flags["debuggable"] = True
             flags["allowBackup"] = 'android:allowBackup="true"' in manifest_xml
             flags["usesCleartextTraffic"] = 'android:usesCleartextTraffic="true"' in manifest_xml
     except Exception:

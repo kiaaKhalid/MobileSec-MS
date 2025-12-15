@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Shield, Home, Upload, FileSearch, Key, Network, FileText, Wrench, Settings } from 'lucide-react';
+// AJOUT : Import de l'icône Brain pour l'IA
+import { Shield, Home, Upload, FileSearch, Key, Network, FileText, Wrench, Brain } from 'lucide-react';
 import './App.css';
+
 import HomePage from './pages/HomePage';
 import APKScannerPage from './pages/APKScannerPage';
 import SecretHunterPage from './pages/SecretHunterPage';
@@ -8,6 +10,8 @@ import CryptoCheckPage from './pages/CryptoCheckPage';
 import NetworkInspectorPage from './pages/NetworkInspectorPage';
 import ReportGenPage from './pages/ReportGenPage';
 import FixSuggestPage from './pages/FixSuggestPage';
+// AJOUT : Import de la nouvelle page
+import AIScannerPage from './pages/AIScannerPage';
 
 function App() {
   return (
@@ -32,6 +36,16 @@ function App() {
                 <span>APK Scanner</span>
               </Link>
             </li>
+            
+            {/* --- NOUVEAU LIEN IA SCANNER --- */}
+            <li>
+              <Link to="/aiscanner" className="nav-link">
+                <Brain size={20} />
+                <span>AI Deep Scan</span>
+              </Link>
+            </li>
+            {/* ------------------------------- */}
+
             <li>
               <Link to="/secrethunter" className="nav-link">
                 <FileSearch size={20} />
@@ -69,6 +83,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/apkscanner" element={<APKScannerPage />} />
+            <Route path="/aiscanner" element={<AIScannerPage />} />
             <Route path="/secrethunter" element={<SecretHunterPage />} />
             <Route path="/cryptocheck" element={<CryptoCheckPage />} />
             <Route path="/networkinspector" element={<NetworkInspectorPage />} />

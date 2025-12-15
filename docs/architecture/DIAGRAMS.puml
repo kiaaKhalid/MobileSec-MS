@@ -1,0 +1,1229 @@
+@startuml Architecture_MobileSec_MS
+
+!theme plain
+skinparam linetype ortho
+
+' Définition des composants
+package "Frontend Layer" {
+    [React Frontend\n:5173] as Frontend
+}
+
+package "Microservices Layer" {
+    [APKScanner\n:8001] as APK
+    [SecretHunter\n:8002] as Secret
+    [CryptoCheck\n:8003] as Crypto
+    [NetworkInspector\n:8004] as Network
+    [ReportGen\n:8005] as Report
+    [FixSuggest\n:8006] as Fix
+    [CIConnector\n:8007] as CI
+}
+
+package "Data Layer" {
+    database "SQLite\napkscanner.db" as DB1
+    database "SQLite\nsecrets.db" as DB2
+    database "SQLite\ncrypto.db" as DB3
+    database "SQLite\nnetwork.db" as DB4
+}
+
+package "External Systems" {
+    [GitHub Actions] as GH
+    [GitLab CI] as GL
+}
+
+' Relations
+Frontend --> APK : HTTP/REST
+Frontend --> Secret : HTTP/REST
+Frontend --> Crypto : HTTP/REST
+Frontend --> Network : HTTP/REST
+Frontend --> Report : HTTP/REST
+Frontend --> Fix : HTTP/REST
+Frontend --> CI : HTTP/REST
+
+APK --> DB1
+Secret --> DB2
+Crypto --> DB3
+Network --> DB4
+
+Report --> APK : Collect results
+Report --> Secret : Collect results
+Report --> Crypto : Collect results
+Report --> Network : Collect results
+
+Fix --> Report : Get findings
+
+CI --> GH : Generate config
+CI --> GL : Generate config
+
+@enduml
+
+' ===================================================================
+' DIAGRAMME DE CAS D'UTILISATION - MobileSec-MS
+' ===================================================================
+
+@startuml UseCase_MobileSec_MS
+
+!theme plain
+skinparam actorStyle awesome
+
+' Acteurs
+actor "Développeur\nMobile" as Dev #lightblue
+actor "Auditeur\nSécurité" as Auditor #lightgreen
+actor "DevOps\nEngineer" as DevOps #lightyellow
+actor "Manager\nQualité" as Manager #lightpink
+actor "CI/CD\nSystem" as CI #lightgrey
+
+' Système
+rectangle "MobileSec-MS Platform" {
+    
+    ' Use Cases - Analyse APK
+    package "Analyse APK" #DDDDDD {
+        usecase (Upload APK) as UC1
+        usecase (Analyser structure APK) as UC2
+        usecase (Extraire permissions) as UC3
+        usecase (Identifier composants exportés) as UC4
+        usecase (Détecter flags de sécurité) as UC5
+    }
+    
+    ' Use Cases - Détection de vulnérabilités
+    package "Détection de Vulnérabilités" #FFDDDD {
+        usecase (Détecter secrets exposés) as UC6
+        usecase (Identifier API keys hardcodées) as UC7
+        usecase (Analyser cryptographie faible) as UC8
+        usecase (Détecter algorithmes obsolètes) as UC9
+        usecase (Vérifier configuration réseau) as UC10
+        usecase (Détecter HTTP cleartext) as UC11
+        usecase (Vérifier certificate pinning) as UC12
+    }
+    
+    ' Use Cases - Génération de rapports
+    package "Génération de Rapports" #DDFFDD {
+        usecase (Générer rapport JSON) as UC13
+        usecase (Générer rapport PDF) as UC14
+        usecase (Générer rapport SARIF) as UC15
+        usecase (Calculer score de sécurité) as UC16
+        usecase (Mapper vers OWASP MASVS) as UC17
+    }
+    
+    ' Use Cases - Suggestions et correctifs
+    package "Suggestions de Correctifs" #DDDDFF {
+        usecase (Obtenir suggestions OWASP) as UC18
+        usecase (Consulter exemples de code) as UC19
+        usecase (Accéder à la base de connaissances) as UC20
+        usecase (Télécharger patches) as UC21
+    }
+    
+    ' Use Cases - Intégration CI/CD
+    package "Intégration CI/CD" #FFFFDD {
+        usecase (Générer config GitHub Actions) as UC22
+        usecase (Générer config GitLab CI) as UC23
+        usecase (Générer Jenkinsfile) as UC24
+        usecase (Automatiser scan dans pipeline) as UC25
+        usecase (Bloquer build si vulnérabilités critiques) as UC26
+    }
+    
+    ' Use Cases - Administration
+    package "Administration" #FFE4E1 {
+        usecase (Consulter historique des scans) as UC27
+        usecase (Gérer les patterns de détection) as UC28
+        usecase (Configurer seuils de sécurité) as UC29
+        usecase (Export données en masse) as UC30
+    }
+}
+
+' Relations Acteurs -> Use Cases
+
+' Développeur Mobile
+Dev --> UC1
+Dev --> UC13
+Dev --> UC14
+Dev --> UC18
+Dev --> UC19
+Dev --> UC27
+
+' Auditeur Sécurité
+Auditor --> UC1
+Auditor --> UC13
+Auditor --> UC14
+Auditor --> UC15
+Auditor --> UC16
+Auditor --> UC17
+Auditor --> UC20
+Auditor --> UC27
+Auditor --> UC28
+Auditor --> UC30
+
+' DevOps Engineer
+DevOps --> UC22
+DevOps --> UC23
+DevOps --> UC24
+DevOps --> UC25
+DevOps --> UC26
+DevOps --> UC29
+
+' Manager Qualité
+Manager --> UC16
+Manager --> UC17
+Manager --> UC27
+Manager --> UC30
+
+' CI/CD System
+CI --> UC1
+CI --> UC15
+CI --> UC25
+CI --> UC26
+
+' Relations Include entre Use Cases
+
+UC1 .> UC2 : <<include>>
+UC1 .> UC6 : <<include>>
+UC1 .> UC8 : <<include>>
+UC1 .> UC10 : <<include>>
+
+UC2 .> UC3 : <<include>>
+UC2 .> UC4 : <<include>>
+UC2 .> UC5 : <<include>>
+
+UC6 .> UC7 : <<include>>
+
+UC8 .> UC9 : <<include>>
+
+UC10 .> UC11 : <<include>>
+UC10 .> UC12 : <<include>>
+
+UC13 .> UC16 : <<include>>
+UC13 .> UC17 : <<include>>
+
+UC14 .> UC16 : <<include>>
+UC14 .> UC17 : <<include>>
+
+UC15 .> UC16 : <<include>>
+UC15 .> UC17 : <<include>>
+
+UC18 .> UC20 : <<include>>
+
+' Relations Extend entre Use Cases
+
+UC19 ..> UC18 : <<extend>>
+UC21 ..> UC18 : <<extend>>
+
+UC26 ..> UC25 : <<extend>>
+
+@enduml
+
+' ===================================================================
+' DIAGRAMME DE CAS D'UTILISATION - DÉTAILLÉ PAR SERVICE
+' ===================================================================
+
+@startuml UseCase_By_Service
+
+!theme plain
+skinparam actorStyle awesome
+
+actor "Utilisateur" as User #lightblue
+actor "Système CI/CD" as CI #lightgrey
+
+rectangle "MobileSec-MS Services" {
+    
+    ' APKScanner Service
+    package "APKScanner Service" #E8F4F8 {
+        usecase (Scanner APK) as APK1
+        usecase (Extraire manifest) as APK2
+        usecase (Lister permissions) as APK3
+        usecase (Identifier composants) as APK4
+        usecase (Détecter debuggable) as APK5
+        usecase (Détecter allowBackup) as APK6
+        usecase (Vérifier cleartext traffic) as APK7
+    }
+    
+    ' SecretHunter Service
+    package "SecretHunter Service" #F8E8E8 {
+        usecase (Scanner secrets) as SEC1
+        usecase (Détecter AWS keys) as SEC2
+        usecase (Détecter Google API keys) as SEC3
+        usecase (Détecter tokens JWT) as SEC4
+        usecase (Analyser entropie) as SEC5
+        usecase (Classifier par sévérité) as SEC6
+    }
+    
+    ' CryptoCheck Service
+    package "CryptoCheck Service" #E8F8E8 {
+        usecase (Analyser cryptographie) as CRY1
+        usecase (Détecter DES/3DES) as CRY2
+        usecase (Détecter MD5/SHA1) as CRY3
+        usecase (Vérifier AES mode) as CRY4
+        usecase (Checker SecureRandom) as CRY5
+        usecase (Mapper vers CWE) as CRY6
+    }
+    
+    ' NetworkInspector Service
+    package "NetworkInspector Service" #F8F8E8 {
+        usecase (Analyser réseau) as NET1
+        usecase (Extraire URLs) as NET2
+        usecase (Détecter HTTP cleartext) as NET3
+        usecase (Vérifier TLS config) as NET4
+        usecase (Checker cert pinning) as NET5
+        usecase (Analyser network_security_config) as NET6
+    }
+    
+    ' ReportGen Service
+    package "ReportGen Service" #F8E8F8 {
+        usecase (Agréger résultats) as REP1
+        usecase (Calculer score) as REP2
+        usecase (Générer JSON) as REP3
+        usecase (Générer PDF) as REP4
+        usecase (Générer SARIF) as REP5
+        usecase (Mapper OWASP MASVS) as REP6
+    }
+    
+    ' FixSuggest Service
+    package "FixSuggest Service" #E8E8F8 {
+        usecase (Suggérer correctifs) as FIX1
+        usecase (Fournir exemples code) as FIX2
+        usecase (Référencer OWASP) as FIX3
+        usecase (Proposer alternatives) as FIX4
+    }
+    
+    ' CIConnector Service
+    package "CIConnector Service" #F0F0F0 {
+        usecase (Générer GitHub Actions) as CIC1
+        usecase (Générer GitLab CI) as CIC2
+        usecase (Générer Jenkins) as CIC3
+        usecase (Configurer webhooks) as CIC4
+    }
+}
+
+' Relations principales
+
+User --> APK1
+User --> SEC1
+User --> CRY1
+User --> NET1
+User --> REP1
+User --> FIX1
+
+CI --> CIC1
+CI --> CIC2
+CI --> CIC3
+CI --> REP5
+
+' Relations Include
+
+APK1 .> APK2 : <<include>>
+APK1 .> APK3 : <<include>>
+APK1 .> APK4 : <<include>>
+APK1 .> APK5 : <<include>>
+APK1 .> APK6 : <<include>>
+APK1 .> APK7 : <<include>>
+
+SEC1 .> SEC2 : <<include>>
+SEC1 .> SEC3 : <<include>>
+SEC1 .> SEC4 : <<include>>
+SEC1 .> SEC5 : <<include>>
+SEC1 .> SEC6 : <<include>>
+
+CRY1 .> CRY2 : <<include>>
+CRY1 .> CRY3 : <<include>>
+CRY1 .> CRY4 : <<include>>
+CRY1 .> CRY5 : <<include>>
+CRY1 .> CRY6 : <<include>>
+
+NET1 .> NET2 : <<include>>
+NET1 .> NET3 : <<include>>
+NET1 .> NET4 : <<include>>
+NET1 .> NET5 : <<include>>
+NET1 .> NET6 : <<include>>
+
+REP1 .> REP2 : <<include>>
+REP1 .> REP6 : <<include>>
+REP3 ..> REP1 : <<extend>>
+REP4 ..> REP1 : <<extend>>
+REP5 ..> REP1 : <<extend>>
+
+FIX1 .> FIX2 : <<include>>
+FIX1 .> FIX3 : <<include>>
+FIX4 ..> FIX1 : <<extend>>
+
+@enduml
+
+' ===================================================================
+' DIAGRAMME DE CAS D'UTILISATION - SCÉNARIO COMPLET
+' ===================================================================
+
+@startuml UseCase_Complete_Scenario
+
+!theme plain
+left to right direction
+skinparam actorStyle awesome
+
+actor "Développeur" as Dev #lightblue
+actor "CI/CD Pipeline" as CI #lightgrey
+
+rectangle "Workflow Complet MobileSec-MS" {
+    
+    ' Phase 1: Préparation
+    package "Phase 1: Préparation" #E3F2FD {
+        usecase (1. Build APK) as P1
+        usecase (2. Configurer CI/CD) as P2
+    }
+    
+    ' Phase 2: Upload & Scan
+    package "Phase 2: Upload & Analyse" #FFF3E0 {
+        usecase (3. Upload APK) as P3
+        usecase (4. Lancer analyse complète) as P4
+        usecase (4a. Analyse statique) as P4a
+        usecase (4b. Détection secrets) as P4b
+        usecase (4c. Vérification crypto) as P4c
+        usecase (4d. Inspection réseau) as P4d
+    }
+    
+    ' Phase 3: Génération rapport
+    package "Phase 3: Génération Rapport" #E8F5E9 {
+        usecase (5. Agréger résultats) as P5
+        usecase (6. Calculer score) as P6
+        usecase (7. Générer rapport) as P7
+        usecase (7a. Format JSON) as P7a
+        usecase (7b. Format PDF) as P7b
+        usecase (7c. Format SARIF) as P7c
+    }
+    
+    ' Phase 4: Suggestions
+    package "Phase 4: Suggestions" #F3E5F5 {
+        usecase (8. Consulter suggestions) as P8
+        usecase (9. Télécharger patches) as P9
+        usecase (10. Appliquer correctifs) as P10
+    }
+    
+    ' Phase 5: Intégration
+    package "Phase 5: Intégration CI/CD" #FFEBEE {
+        usecase (11. Publier rapport) as P11
+        usecase (12. Vérifier seuils) as P12
+        usecase (13. Notifier équipe) as P13
+    }
+}
+
+' Relations principales
+
+Dev --> P1
+Dev --> P3
+Dev --> P8
+Dev --> P10
+
+CI --> P2
+CI --> P3
+CI --> P11
+CI --> P12
+CI --> P13
+
+' Flux de travail
+
+P1 --> P3
+P2 --> P3
+P3 --> P4
+
+P4 .> P4a : <<include>>
+P4 .> P4b : <<include>>
+P4 .> P4c : <<include>>
+P4 .> P4d : <<include>>
+
+P4a --> P5
+P4b --> P5
+P4c --> P5
+P4d --> P5
+
+P5 --> P6
+P6 --> P7
+
+P7 ..> P7a : <<extend>>
+P7 ..> P7b : <<extend>>
+P7 ..> P7c : <<extend>>
+
+P7 --> P8
+P8 --> P9
+P9 --> P10
+
+P7c --> P11
+P11 --> P12
+P12 --> P13
+
+note right of P12
+  Si score < 70:
+  - Bloquer build
+  - Envoyer alerte
+  Sinon:
+  - Continuer pipeline
+end note
+
+@enduml
+
+@startuml Sequence_Scan_Complete
+
+actor User
+participant Frontend
+participant APKScanner
+participant SecretHunter
+participant CryptoCheck
+participant ReportGen
+
+User -> Frontend: Upload APK
+Frontend -> APKScanner: POST /scan
+activate APKScanner
+APKScanner -> APKScanner: Analyze APK
+APKScanner --> Frontend: {job_id: "xxx"}
+deactivate APKScanner
+
+Frontend -> SecretHunter: POST /scan
+activate SecretHunter
+SecretHunter -> SecretHunter: Scan secrets
+SecretHunter --> Frontend: {job_id: "yyy"}
+deactivate SecretHunter
+
+Frontend -> CryptoCheck: POST /scan
+activate CryptoCheck
+CryptoCheck -> CryptoCheck: Check crypto
+CryptoCheck --> Frontend: {job_id: "zzz"}
+deactivate CryptoCheck
+
+Frontend -> ReportGen: POST /generate
+activate ReportGen
+ReportGen -> APKScanner: GET /scan/xxx
+APKScanner --> ReportGen: results
+ReportGen -> SecretHunter: GET /scan/yyy
+SecretHunter --> ReportGen: results
+ReportGen -> CryptoCheck: GET /scan/zzz
+CryptoCheck --> ReportGen: results
+ReportGen -> ReportGen: Aggregate & Generate
+ReportGen --> Frontend: Complete Report
+deactivate ReportGen
+
+Frontend --> User: Display Results
+
+@enduml
+
+@startuml Class_APKScanner
+
+' ===================================================================
+' DIAGRAMME DE CLASSES COMPLET - MobileSec-MS
+' ===================================================================
+
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' ===================================================================
+' APKScanner Service
+' ===================================================================
+
+package "APKScanner Service" #E8F4F8 {
+    
+    class FlaskApp {
+        -app: Flask
+        -cors: CORS
+        -upload_folder: str
+        --
+        +scan(): Response
+        +get_job(job_id: str): Response
+        +health(): Response
+        +list_scans(): Response
+        -_allowed_file(filename: str): bool
+        -_save_uploaded_file(file): str
+    }
+    
+    class APKAnalyzer {
+        -apk: APK
+        -manifest_xml: str
+        -package_name: str
+        -filepath: str
+        --
+        +analyze_apk(filepath: str): dict
+        +extract_permissions(): List[Permission]
+        +extract_components(): List[Component]
+        +check_security_flags(): SecurityFlags
+        +get_package_info(): PackageInfo
+        -_parse_manifest_xml(): ElementTree
+        -_analyze_activities(): List[Activity]
+        -_analyze_services(): List[Service]
+        -_analyze_receivers(): List[Receiver]
+        -_analyze_providers(): List[Provider]
+    }
+    
+    class Component {
+        +name: str
+        +type: ComponentType
+        +exported: bool
+        +permission: str
+        +intent_filters: List[IntentFilter]
+        --
+        +to_dict(): dict
+        +is_vulnerable(): bool
+        +get_risk_level(): RiskLevel
+    }
+    
+    class Permission {
+        +name: str
+        +protection_level: str
+        +is_dangerous: bool
+        +category: PermissionCategory
+        --
+        +to_dict(): dict
+        +get_owasp_mapping(): str
+    }
+    
+    class SecurityFlags {
+        +debuggable: bool
+        +allow_backup: bool
+        +uses_cleartext_traffic: bool
+        +test_only: bool
+        +network_security_config: str
+        --
+        +to_dict(): dict
+        +get_vulnerabilities(): List[Vulnerability]
+        +calculate_risk_score(): int
+    }
+    
+    class PackageInfo {
+        +package_name: str
+        +version_name: str
+        +version_code: int
+        +min_sdk_version: int
+        +target_sdk_version: int
+        --
+        +to_dict(): dict
+    }
+    
+    class DatabaseManager {
+        -db_path: str
+        -connection: Connection
+        --
+        +init_db(): void
+        +save_scan_result(job_id: str, data: dict): void
+        +update_status(job_id: str, status: ScanStatus): void
+        +get_scan(job_id: str): dict
+        +get_all_scans(limit: int): List[dict]
+        +delete_scan(job_id: str): bool
+        -_get_connection(): Connection
+        -_execute_query(query: str, params: tuple): Any
+    }
+    
+    enum ComponentType {
+        ACTIVITY
+        SERVICE
+        RECEIVER
+        PROVIDER
+    }
+    
+    enum ScanStatus {
+        QUEUED
+        RUNNING
+        DONE
+        FAILED
+    }
+    
+    enum RiskLevel {
+        CRITICAL
+        HIGH
+        MEDIUM
+        LOW
+        INFO
+    }
+    
+    ' Relations APKScanner
+    FlaskApp --> APKAnalyzer : uses
+    FlaskApp --> DatabaseManager : uses
+    APKAnalyzer --> Component : creates
+    APKAnalyzer --> Permission : extracts
+    APKAnalyzer --> SecurityFlags : analyzes
+    APKAnalyzer --> PackageInfo : extracts
+    Component --> ComponentType : has
+    Component --> RiskLevel : evaluates
+    DatabaseManager --> ScanStatus : manages
+}
+
+' ===================================================================
+' SecretHunter Service
+' ===================================================================
+
+package "SecretHunter Service" #F8E8E8 {
+    
+    class SecretHunterApp {
+        -app: Flask
+        -scanner: SecretScanner
+        -db_manager: SecretDatabase
+        --
+        +scan(): Response
+        +get_scan(job_id: str): Response
+        +get_patterns(): Response
+        +health(): Response
+    }
+    
+    class SecretScanner {
+        -patterns: List[SecretPattern]
+        -apk_analyzer: APKAnalyzer
+        --
+        +scan_apk(filepath: str): List[SecretFinding]
+        +extract_strings(apk: APK): List[str]
+        +apply_patterns(strings: List[str]): List[SecretFinding]
+        +calculate_entropy(text: str): float
+        +analyze_confidence(finding: SecretFinding): int
+        -_scan_java_code(): List[SecretFinding]
+        -_scan_resources(): List[SecretFinding]
+        -_scan_manifest(): List[SecretFinding]
+    }
+    
+    class SecretPattern {
+        +name: str
+        +regex: str
+        +severity: Severity
+        +description: str
+        +examples: List[str]
+        --
+        +match(text: str): List[Match]
+        +validate(value: str): bool
+    }
+    
+    class SecretFinding {
+        +id: str
+        +type: SecretType
+        +value: str
+        +location: str
+        +line_number: int
+        +severity: Severity
+        +confidence: int
+        +entropy: float
+        --
+        +to_dict(): dict
+        +redact_value(): str
+        +get_recommendation(): str
+    }
+    
+    class SecretDatabase {
+        -db_path: str
+        --
+        +save_scan(job_id: str, findings: List[SecretFinding]): void
+        +get_scan(job_id: str): dict
+        +save_pattern(pattern: SecretPattern): void
+        +get_all_patterns(): List[SecretPattern]
+    }
+    
+    enum SecretType {
+        AWS_KEY
+        GOOGLE_API_KEY
+        STRIPE_KEY
+        JWT_TOKEN
+        PASSWORD
+        PRIVATE_KEY
+        OAUTH_TOKEN
+        DATABASE_URL
+    }
+    
+    enum Severity {
+        CRITICAL
+        HIGH
+        MEDIUM
+        LOW
+    }
+    
+    ' Relations SecretHunter
+    SecretHunterApp --> SecretScanner : uses
+    SecretHunterApp --> SecretDatabase : uses
+    SecretScanner --> SecretPattern : uses
+    SecretScanner --> SecretFinding : produces
+    SecretFinding --> SecretType : categorizes
+    SecretFinding --> Severity : has
+    SecretPattern --> Severity : defines
+}
+
+' ===================================================================
+' CryptoCheck Service
+' ===================================================================
+
+package "CryptoCheck Service" #E8F8E8 {
+    
+    class CryptoCheckApp {
+        -app: Flask
+        -analyzer: CryptoAnalyzer
+        -db_manager: CryptoDatabase
+        --
+        +scan(): Response
+        +get_scan(job_id: str): Response
+        +get_cwe_mappings(): Response
+        +health(): Response
+    }
+    
+    class CryptoAnalyzer {
+        -weak_algorithms: List[WeakAlgorithm]
+        -cwe_mapper: CWEMapper
+        --
+        +analyze_apk(filepath: str): List[CryptoIssue]
+        +detect_weak_encryption(): List[CryptoIssue]
+        +detect_weak_hash(): List[CryptoIssue>
+        +detect_hardcoded_keys(): List[CryptoIssue]
+        +detect_insecure_random(): List[CryptoIssue]
+        -_scan_cipher_usage(): List[CryptoIssue]
+        -_scan_messagedigest_usage(): List[CryptoIssue]
+    }
+    
+    class CryptoIssue {
+        +id: str
+        +algorithm: str
+        +issue_type: IssueType
+        +severity: Severity
+        +location: str
+        +cwe_id: str
+        +masvs_id: str
+        +description: str
+        --
+        +to_dict(): dict
+        +get_recommendation(): str
+        +get_secure_alternative(): str
+    }
+    
+    class WeakAlgorithm {
+        +name: str
+        +type: AlgorithmType
+        +reason: str
+        +alternative: str
+        +cwe_id: str
+        --
+        +is_weak(algorithm: str): bool
+    }
+    
+    class CWEMapper {
+        -mappings: Dict[str, CWEInfo]
+        --
+        +map_to_cwe(issue_type: str): str
+        +get_cwe_info(cwe_id: str): CWEInfo
+        +load_mappings(): void
+    }
+    
+    class CWEInfo {
+        +cwe_id: str
+        +title: str
+        +description: str
+        +severity: Severity
+        +url: str
+    }
+    
+    class CryptoDatabase {
+        -db_path: str
+        --
+        +save_scan(job_id: str, issues: List[CryptoIssue]): void
+        +get_scan(job_id: str): dict
+        +save_cwe_mapping(cwe: CWEInfo): void
+    }
+    
+    enum IssueType {
+        WEAK_ENCRYPTION
+        WEAK_HASH
+        HARDCODED_KEY
+        INSECURE_RANDOM
+        WEAK_MODE
+    }
+    
+    enum AlgorithmType {
+        ENCRYPTION
+        HASH
+        RANDOM
+        KEY_DERIVATION
+    }
+    
+    ' Relations CryptoCheck
+    CryptoCheckApp --> CryptoAnalyzer : uses
+    CryptoCheckApp --> CryptoDatabase : uses
+    CryptoAnalyzer --> CryptoIssue : produces
+    CryptoAnalyzer --> WeakAlgorithm : checks
+    CryptoAnalyzer --> CWEMapper : uses
+    CWEMapper --> CWEInfo : provides
+    CryptoIssue --> IssueType : categorizes
+    WeakAlgorithm --> AlgorithmType : has
+}
+
+' ===================================================================
+' NetworkInspector Service
+' ===================================================================
+
+package "NetworkInspector Service" #F8F8E8 {
+    
+    class NetworkInspectorApp {
+        -app: Flask
+        -inspector: NetworkAnalyzer
+        -db_manager: NetworkDatabase
+        --
+        +scan(): Response
+        +get_scan(job_id: str): Response
+        +health(): Response
+    }
+    
+    class NetworkAnalyzer {
+        -url_extractor: URLExtractor
+        -tls_checker: TLSChecker
+        --
+        +analyze_apk(filepath: str): List[NetworkIssue]
+        +extract_urls(): List[URLFinding]
+        +check_cleartext_traffic(): List[NetworkIssue]
+        +check_tls_configuration(): List[NetworkIssue]
+        +check_certificate_pinning(): List[NetworkIssue]
+        +analyze_network_security_config(xml: str): List[NetworkIssue]
+        -_extract_from_manifest(): List[str]
+        -_extract_from_strings(): List[str]
+        -_extract_from_code(): List[str]
+    }
+    
+    class URLExtractor {
+        -url_patterns: List[str]
+        --
+        +extract_urls(text: str): List[str]
+        +classify_url(url: str): URLType
+        +is_secure(url: str): bool
+    }
+    
+    class TLSChecker {
+        -weak_versions: List[str]
+        -weak_ciphers: List[str]
+        --
+        +check_tls_version(config: str): List[TLSIssue]
+        +check_cipher_suites(config: str): List[TLSIssue]
+        +check_hostname_verification(): bool
+    }
+    
+    class NetworkIssue {
+        +id: str
+        +type: NetworkIssueType
+        +severity: Severity
+        +url: str
+        +description: str
+        +location: str
+        +recommendation: str
+        --
+        +to_dict(): dict
+    }
+    
+    class URLFinding {
+        +url: str
+        +protocol: str
+        +domain: str
+        +is_secure: bool
+        +location: str
+        --
+        +to_dict(): dict
+    }
+    
+    class NetworkDatabase {
+        -db_path: str
+        --
+        +save_scan(job_id: str, issues: List[NetworkIssue]): void
+        +get_scan(job_id: str): dict
+    }
+    
+    enum NetworkIssueType {
+        CLEARTEXT_HTTP
+        WEAK_TLS
+        NO_CERT_PINNING
+        HOSTNAME_NOT_VERIFIED
+        INSECURE_TRUST_MANAGER
+    }
+    
+    enum URLType {
+        HTTP
+        HTTPS
+        WEBSOCKET
+        API_ENDPOINT
+    }
+    
+    ' Relations NetworkInspector
+    NetworkInspectorApp --> NetworkAnalyzer : uses
+    NetworkInspectorApp --> NetworkDatabase : uses
+    NetworkAnalyzer --> URLExtractor : uses
+    NetworkAnalyzer --> TLSChecker : uses
+    NetworkAnalyzer --> NetworkIssue : produces
+    NetworkAnalyzer --> URLFinding : extracts
+    NetworkIssue --> NetworkIssueType : categorizes
+    URLFinding --> URLType : has
+}
+
+' ===================================================================
+' ReportGen Service (Node.js)
+' ===================================================================
+
+package "ReportGen Service" #F8E8F8 {
+    
+    class ExpressApp {
+        -app: Express
+        -port: int
+        -aggregator: ReportAggregator
+        --
+        +generate(): Response
+        +getReport(reportId: string): Response
+        +health(): Response
+    }
+    
+    class ReportAggregator {
+        -httpClient: Axios
+        -services: Map<string, string>
+        --
+        +collectResults(jobIds: JobIds): AggregatedReport
+        +fetchFromService(serviceName: string, jobId: string): ServiceResult
+        -retryWithBackoff(url: string, retries: int): Promise<any>
+    }
+    
+    class ReportGenerator {
+        -jsonFormatter: JSONFormatter
+        -pdfGenerator: PDFGenerator
+        -sarifFormatter: SARIFFormatter
+        --
+        +generate(data: AggregatedReport, format: ReportFormat): Report
+        +calculateScore(issues: List[Issue]): SecurityScore
+        +mapToOWASP(issues: List[Issue]): OWASPMapping
+    }
+    
+    class SecurityScore {
+        +total_score: int
+        +category_scores: Map<string, int>
+        +critical_count: int
+        +high_count: int
+        +medium_count: int
+        +low_count: int
+        --
+        +toDict(): object
+        +getGrade(): string
+    }
+    
+    class JSONFormatter {
+        +format(report: AggregatedReport): string
+        +prettify(json: string): string
+    }
+    
+    class PDFGenerator {
+        -jsPDF: jsPDF
+        --
+        +generate(report: AggregatedReport): Buffer
+        +addHeader(): void
+        +addSummary(summary: Summary): void
+        +addFindings(findings: List<Finding>): void
+        +addCharts(data: ChartData): void
+    }
+    
+    class SARIFFormatter {
+        -version: string
+        --
+        +format(report: AggregatedReport): string
+        +createRun(findings: List<Finding>): SARIFRun
+        +createResult(finding: Finding): SARIFResult
+    }
+    
+    class OWASPMapping {
+        +masvs_categories: Map<string, List<Finding>>
+        --
+        +mapFinding(finding: Finding): string
+        +getComplianceScore(): int
+    }
+    
+    enum ReportFormat {
+        JSON
+        PDF
+        SARIF
+    }
+    
+    ' Relations ReportGen
+    ExpressApp --> ReportAggregator : uses
+    ExpressApp --> ReportGenerator : uses
+    ReportAggregator --> ReportGenerator : provides data
+    ReportGenerator --> JSONFormatter : uses
+    ReportGenerator --> PDFGenerator : uses
+    ReportGenerator --> SARIFFormatter : uses
+    ReportGenerator --> SecurityScore : calculates
+    ReportGenerator --> OWASPMapping : creates
+}
+
+' ===================================================================
+' FixSuggest Service
+' ===================================================================
+
+package "FixSuggest Service" #E8E8F8 {
+    
+    class FixSuggestApp {
+        -app: Flask
+        -knowledge_base: KnowledgeBase
+        -suggester: FixSuggester
+        --
+        +suggest(): Response
+        +getFix(vulnType: str): Response
+        +getKnowledgeBase(): Response
+        +health(): Response
+    }
+    
+    class FixSuggester {
+        -knowledge_base: KnowledgeBase
+        -template_engine: Jinja2
+        --
+        +generateSuggestions(findings: List[Finding]): List[Fix]
+        +getFix(vulnerabilityType: str): Fix
+        +generateCodeExample(fix: Fix, language: str): CodeExample
+    }
+    
+    class KnowledgeBase {
+        -fixes_path: str
+        -fixes: Map<string, Fix>
+        --
+        +loadFixes(): void
+        +getFix(vulnId: str): Fix
+        +searchFixes(query: str): List[Fix]
+        +getAllCategories(): List<string>
+    }
+    
+    class Fix {
+        +id: str
+        +vulnerability: str
+        +severity: Severity
+        +cwe: str
+        +masvs: str
+        +problem: str
+        +solution: str
+        +code_before: str
+        +code_after: str
+        +references: List<str>
+        --
+        +toDict(): dict
+        +generateExample(language: str): CodeExample
+    }
+    
+    class CodeExample {
+        +language: str
+        +before: str
+        +after: str
+        +explanation: str
+        --
+        +toDict(): dict
+    }
+    
+    ' Relations FixSuggest
+    FixSuggestApp --> FixSuggester : uses
+    FixSuggestApp --> KnowledgeBase : uses
+    FixSuggester --> KnowledgeBase : queries
+    FixSuggester --> Fix : generates
+    Fix --> CodeExample : produces
+}
+
+' ===================================================================
+' CIConnector Service
+' ===================================================================
+
+package "CIConnector Service" #F0F0F0 {
+    
+    class CIConnectorApp {
+        -app: Flask
+        -template_manager: TemplateManager
+        --
+        +getGitHubAction(): Response
+        +getGitLabCI(): Response
+        +getJenkinsfile(): Response
+        +getIntegrationGuide(): Response
+        +health(): Response
+    }
+    
+    class TemplateManager {
+        -templates_path: str
+        -jinja_env: Jinja2Environment
+        --
+        +loadTemplate(name: str): Template
+        +renderTemplate(template: Template, variables: dict): str
+        +getAllTemplates(): List[Template]
+    }
+    
+    class CITemplate {
+        +name: str
+        +type: CIType
+        +content: str
+        +variables: List<str>
+        --
+        +render(params: dict): str
+        +validate(): bool
+    }
+    
+    enum CIType {
+        GITHUB_ACTIONS
+        GITLAB_CI
+        JENKINS
+        AZURE_PIPELINES
+        CIRCLE_CI
+    }
+    
+    ' Relations CIConnector
+    CIConnectorApp --> TemplateManager : uses
+    TemplateManager --> CITemplate : manages
+    CITemplate --> CIType : has
+}
+
+' ===================================================================
+' Relations Inter-Services
+' ===================================================================
+
+ReportAggregator ..> APKAnalyzer : fetches from
+ReportAggregator ..> SecretScanner : fetches from
+ReportAggregator ..> CryptoAnalyzer : fetches from
+ReportAggregator ..> NetworkAnalyzer : fetches from
+
+FixSuggester ..> ReportGenerator : receives findings from
+
+note top of FlaskApp
+  Pattern: REST API Controller
+  Framework: Flask 2.3
+  Port: 8001
+end note
+
+note top of ExpressApp
+  Pattern: REST API Controller
+  Framework: Express 4.18
+  Port: 8005
+end note
+
+note top of ReportGenerator
+  Génère 3 formats:
+  - JSON (défaut)
+  - PDF (jsPDF)
+  - SARIF 2.1.0
+end note
+
+@enduml
+
+@startuml Deployment_Kubernetes
+
+node "Load Balancer" {
+    [Nginx/HAProxy]
+}
+
+node "Kubernetes Cluster" {
+    cloud "Namespace: mobilesec" {
+        node "Pod: APKScanner" {
+            [apkscanner:8001]
+        }
+        node "Pod: SecretHunter" {
+            [secrethunter:8002]
+        }
+        node "Pod: CryptoCheck" {
+            [cryptocheck:8003]
+        }
+        node "Pod: ReportGen" {
+            [reportgen:8005]
+        }
+    }
+}
+
+database "PostgreSQL" {
+    [Primary DB]
+}
+
+database "Redis" {
+    [Cache]
+}
+
+[Nginx/HAProxy] --> [apkscanner:8001]
+[Nginx/HAProxy] --> [secrethunter:8002]
+[Nginx/HAProxy] --> [cryptocheck:8003]
+[Nginx/HAProxy] --> [reportgen:8005]
+
+[apkscanner:8001] --> [Primary DB]
+[secrethunter:8002] --> [Primary DB]
+[cryptocheck:8003] --> [Primary DB]
+[reportgen:8005] --> [Cache]
+
+@enduml

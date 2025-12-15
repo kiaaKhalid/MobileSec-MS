@@ -77,6 +77,26 @@ services:
     networks:
       - mobilesec-network
 
+  # --- NOUVEAU SERVICE IA ---
+  aiscanner:
+    build: ./services/aiscanner
+    container_name: mobilesec-aiscanner
+    ports:
+      - "5005:5005"
+    volumes:
+      - ./services/aiscanner:/app
+    environment:
+      - PORT=5005
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5005/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mobilesec-network
+  # --------------------------
+
   reportgen:
     build: ./services/reportgen
     container_name: mobilesec-reportgen
@@ -88,11 +108,13 @@ services:
       - SECRETHUNTER_URL=http://secrethunter:8002
       - CRYPTOCHECK_URL=http://cryptocheck:8003
       - NETWORKINSPECTOR_URL=http://networkinspector:8004
+      - AISCANNER_URL=http://aiscanner:5005
     depends_on:
       - apkscanner
       - secrethunter
       - cryptocheck
       - networkinspector
+      - aiscanner
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
@@ -148,6 +170,7 @@ services:
       - reportgen
       - fixsuggest
       - ciconnector
+      - aiscanner
     networks:
       - mobilesec-network
 

@@ -1,4 +1,4 @@
-.PHONY: help build up down logs test clean status health
+.PHONY: help build up down logs test clean status health ps pull
 
 help: ## Affiche l'aide
 	@echo "MobileSec-MS - Commandes disponibles:"
@@ -20,8 +20,17 @@ down: ## Arrête tous les services
 stop: ## Arrête sans supprimer les containers
 	docker-compose stop
 
+start: ## Démarre les containers existants
+	docker-compose start
+
 restart: ## Redémarre tous les services
 	docker-compose restart
+
+ps: ## Affiche l'état des containers
+	@docker-compose ps
+
+pull: ## Met à jour les images Docker
+	docker-compose pull
 
 logs: ## Affiche les logs de tous les services
 	docker-compose logs -f
@@ -34,6 +43,21 @@ logs-secret: ## Logs SecretHunter
 
 logs-crypto: ## Logs CryptoCheck
 	docker-compose logs -f cryptocheck
+
+logs-network: ## Logs NetworkInspector
+	docker-compose logs -f networkinspector
+
+logs-report: ## Logs ReportGen
+	docker-compose logs -f reportgen
+
+logs-fix: ## Logs FixSuggest
+	docker-compose logs -f fixsuggest
+
+logs-ci: ## Logs CIConnector
+	docker-compose logs -f ciconnector
+
+logs-frontend: ## Logs Frontend
+	docker-compose logs -f frontend
 
 status: ## Affiche le statut des services
 	@echo "🔍 État des services:"
