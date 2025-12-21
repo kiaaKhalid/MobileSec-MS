@@ -1,108 +1,175 @@
 import React, { useState } from 'react';
-import { Upload, AlertTriangle, CheckCircle, Brain, Loader, FileText, Shield, Activity } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, Brain, Loader, FileText, Shield, Activity, Zap } from 'lucide-react';
+import axios from 'axios';
 
 const AIScannerPage = () => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [dragging, setDragging] = useState(false);
 
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile && selectedFile.name.endsWith('.apk')) {
+      setFile(selectedFile);
       setResult(null);
       setError(null);
+    } else {
+      setError('Veuillez sélectionner un fichier APK valide');
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile && droppedFile.name.endsWith('.apk')) {
+      setFile(droppedFile);
+      setError(null);
+    } else {
+      setError('Veuillez déposer un fichier APK valide');
     }
   };
 
   const handleScan = async () => {
-    if (!file) return;
+    if (!file) {
+      setError('Veuillez sélectionner un fichier APK');
+      return;
+    }
 
     setLoading(true);
     setError(null);
-    
+    setResult(null);
+
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      // Simulation de l'appel API (remplacez par votre fetch réel vers localhost:5005)
-      // const response = await fetch('http://localhost:5005/scan', { method: 'POST', body: formData });
-      
-      // Pour la démo visuelle, je simule une réponse après 2 secondes
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Exemple de fausse réponse pour visualiser le design (à supprimer pour la prod)
+      // Appel API réel vers le service IA
+      const response = await axios.post('http://localhost:5005/scan', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setResult({
+        ...response.data,
+        file: file.name,
+        analysisTime: new Date().toLocaleTimeString('fr-FR')
+      });
+    } catch (err) {
+      // Fallback démo en cas d'erreur
+      console.error('Erreur analyse:', err);
+      // Décommentez pour tester le design avec une réponse fictive
+      /*
       const mockResponse = {
         file: file.name,
-        status: 'SECURE', // Changez ceci en 'MALWARE' ou 'SUSPICIOUS' pour tester les couleurs
-        risk_score: 0.1187,
-        engine: 'MobileSec-DeepLearning-v3'
+        status: 'SUSPICIOUS',
+        risk_score: 0.65,
+        engine: 'MobileSec-DeepLearning-v3',
+        confidence: 0.92,
+        analysisTime: new Date().toLocaleTimeString('fr-FR')
       };
-      
-      // En production, décommentez ceci :
-      /*
-      if (!response.ok) throw new Error('Erreur analyse');
-      const data = await response.json();
-      setResult(data);
+      setResult(mockResponse);
       */
-     
-      setResult(mockResponse); // À remplacer par data
-
-    } catch (err) {
-      setError("Impossible de contacter le service IA. Vérifiez la connexion.");
-      console.error(err);
+      setError(err.response?.data?.error || 'Erreur lors de l\'analyse IA. Vérifiez la connexion au service.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Configuration des couleurs selon le statut pour le mode sombre
+  // Configuration des badges selon le statut
   const getStatusConfig = (status) => {
     switch (status) {
       case 'MALWARE': 
+        return 'badge-critical';
+      case 'SUSPICIOUS': 
+        return 'badge-warning';
+      case 'SECURE': 
+        return 'badge-success';
+      default: 
+        return 'badge-info';
+    }
+  };
+
+  // Configuration complète du statut avec labels et icons
+  const getStatusDetails = (status) => {
+    switch (status) {
+      case 'MALWARE': 
         return {
-          bg: 'bg-red-500/10',
-          border: 'border-red-500/50',
-          text: 'text-red-400',
-          icon: <AlertTriangle className="w-6 h-6 text-red-500" />,
           label: 'MALVEILLANT DÉTECTÉ',
-          gradient: 'from-red-600 to-orange-600'
+          icon: <AlertTriangle size={20} className="text-red-500" />,
+          description: 'Attention ! Ce fichier contient une activité malveillante. Ne pas installer.',
+          color: 'text-red-500'
         };
       case 'SUSPICIOUS': 
         return {
-          bg: 'bg-yellow-500/10',
-          border: 'border-yellow-500/50',
-          text: 'text-yellow-400',
-          icon: <AlertTriangle className="w-6 h-6 text-yellow-500" />,
           label: 'COMPORTEMENT SUSPECT',
-          gradient: 'from-yellow-600 to-orange-500'
+          icon: <AlertTriangle size={20} className="text-yellow-500" />,
+          description: 'Des schémas suspects ont été détectés. Procédez avec prudence.',
+          color: 'text-yellow-500'
         };
       case 'SECURE': 
         return {
-          bg: 'bg-emerald-500/10',
-          border: 'border-emerald-500/50',
-          text: 'text-emerald-400',
-          icon: <CheckCircle className="w-6 h-6 text-emerald-500" />,
           label: 'FICHIER SÉCURISÉ',
-          gradient: 'from-emerald-600 to-teal-600'
+          icon: <CheckCircle size={20} className="text-emerald-500" />,
+          description: 'L\'analyse n\'a détecté aucune menace. Fichier sûr pour l\'installation.',
+          color: 'text-emerald-500'
         };
-      default: return {};
+      default: 
+        return {
+          label: 'ANALYSE EN ATTENTE',
+          icon: <Brain size={20} />,
+          description: 'En attente de traitement...',
+          color: 'text-primary'
+        };
     }
   };
 
   return (
-    <div className="main-content">
+    <div>
       <div className="page-header">
-        <h1 className="flex items-center gap-3"><Brain className="text-primary" size={36} /> Analyse Deep Learning</h1>
-        <p className="text-secondary">Utilisez notre modèle de réseau de neurones convolutifs pour détecter les malwares Android basés sur l'analyse statique des permissions.</p>
+        <h1 className="flex items-center gap-3">
+          <Brain className="text-primary" size={32} />
+          Analyse Deep Learning
+        </h1>
+        <p>Utilisez notre modèle de réseau de neurones convolutifs pour détecter les malwares Android basés sur l'analyse statique des permissions.</p>
       </div>
 
-      <div className="card" style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div className="card">
         <div className="card-header">
-          <h2 className="card-title flex items-center gap-2"><Upload size={20} className="text-primary"/> Scanner un APK</h2>
+          <h2 className="card-title flex items-center gap-2">
+            <Zap size={20} className="text-primary" />
+            Scanner un APK
+          </h2>
         </div>
         <div className="card-body">
-          <div className="upload-area" onClick={() => document.getElementById('ai-file-input').click()} style={{ cursor: loading ? 'not-allowed' : 'pointer' }}>
+          <div
+            className={`upload-area ${dragging ? 'dragging' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById('ai-file-input').click()}
+            style={{ cursor: loading ? 'not-allowed' : 'pointer' }}
+          >
+            <Upload className="upload-icon" />
+            <div className="upload-text">
+              <h3>Glissez-déposez votre fichier APK ici</h3>
+              <p>ou cliquez pour sélectionner un fichier</p>
+              {file && (
+                <p style={{ marginTop: '1rem', color: 'var(--primary-color)', fontWeight: 500 }}>
+                  ✓ Fichier sélectionné: {file.name}
+                </p>
+              )}
+            </div>
             <input
               id="ai-file-input"
               type="file"
@@ -111,57 +178,189 @@ const AIScannerPage = () => {
               style={{ display: 'none' }}
               disabled={loading}
             />
-            <div className="upload-icon-box">
-              {file ? <FileText size={32} className="text-primary" /> : <Upload size={32} className="text-secondary" />}
-            </div>
-            <div className="upload-text">
-              <h3>{file ? file.name : "Cliquez pour sélectionner un fichier APK"}</h3>
-              <p className="text-secondary mt-1">{file ? "Prêt pour l'analyse" : "Fichiers .apk uniquement"}</p>
-            </div>
           </div>
 
           {error && (
-            <div className="alert alert-danger mt-4 flex items-center gap-2">
-              <AlertTriangle size={18} /> <span>{error}</span>
+            <div style={{ 
+              padding: '1rem', 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              borderRadius: '0.5rem', 
+              marginTop: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: 'var(--danger-color)'
+            }}>
+              <AlertTriangle size={18} />
+              <span>{error}</span>
             </div>
           )}
 
           <button
-            className="btn btn-primary mt-6 w-full flex items-center justify-center gap-2"
+            className="btn btn-primary"
             onClick={handleScan}
             disabled={!file || loading}
+            style={{ width: '100%', marginTop: '1.5rem' }}
           >
-            {loading ? (<><Loader className="animate-spin" size={20} /> Analyse en cours...</>) : (<>Rechercher les menaces</>)}
+            {loading ? (
+              <>
+                <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                Analyse en cours...
+              </>
+            ) : (
+              <>
+                <Brain size={20} />
+                Analyser l'APK
+              </>
+            )}
           </button>
         </div>
       </div>
 
+      {loading && (
+        <div className="card">
+          <div className="loading">
+            <div className="spinner"></div>
+            <p>Analyse de l'APK en cours... Cela peut prendre quelques instants.</p>
+          </div>
+        </div>
+      )}
+
       {result && (
-        <div className="results-container mt-8">
-          <div className="card" style={{ maxWidth: 700, margin: '0 auto' }}>
-            <div className="card-header flex items-center gap-3">
-              {getStatusConfig(result.status).icon}
-              <h2 className="card-title mb-0">{getStatusConfig(result.status).label}</h2>
-              <span className={`badge ${result.status === 'MALWARE' ? 'badge-critical' : result.status === 'SUSPICIOUS' ? 'badge-warning' : 'badge-success'}`}>{(result.risk_score * 100).toFixed(2)}%</span>
-            </div>
-            <div className="card-body grid md:grid-cols-2 gap-8 items-center">
-              <div>
-                <p className="text-secondary text-sm mb-2">Fichier analysé :</p>
-                <p className="font-bold mb-2">{result.file}</p>
-                <p className="text-xs text-secondary mb-2">Moteur IA : <span className="font-mono text-primary font-bold">{result.engine}</span></p>
-                <div className="progress-bar mt-4 mb-2">
-                  <div className={`progress ${result.status === 'MALWARE' ? 'bg-danger' : result.status === 'SUSPICIOUS' ? 'bg-warning' : 'bg-success'}`}
-                    style={{ width: `${result.risk_score * 100}%` }}></div>
-                </div>
-                <p className="text-xs text-secondary mt-2">* Un score proche de 100% indique une très forte probabilité de malware.</p>
+        <div className="results-container">
+          <div className="card">
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {getStatusDetails(result.status).icon}
+                <h2 className="card-title mb-0">{getStatusDetails(result.status).label}</h2>
               </div>
-              <div className={`p-4 rounded-lg ${getStatusConfig(result.status).bg} ${getStatusConfig(result.status).border}`}> 
-                <h4 className={`font-bold mb-2 flex items-center gap-2 ${getStatusConfig(result.status).text}`}><Shield size={18} /> Analyse terminée</h4>
-                <p className="text-sm">
-                  {result.status === 'SECURE' && "L'analyse approfondie des permissions n'a révélé aucun schéma correspondant aux malwares connus dans notre base de données neuronale."}
-                  {result.status === 'SUSPICIOUS' && "L'IA a détecté une combinaison de permissions qui est rarement vue dans les applications légitimes. Procédez avec prudence."}
-                  {result.status === 'MALWARE' && "Attention ! Ce fichier demande des permissions critiques souvent associées aux chevaux de Troie bancaires ou aux spywares."}
-                </p>
+              <span className={`badge ${getStatusConfig(result.status)}`}>
+                {result.risk_score ? (result.risk_score * 100).toFixed(2) : result.risk_score || 'N/A'}%
+              </span>
+            </div>
+
+            <div className="card-body">
+              {/* Informations du fichier */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: '1rem', 
+                marginBottom: '1.5rem' 
+              }}>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Fichier analysé</p>
+                  <p style={{ fontWeight: 600, wordBreak: 'break-all' }}>{result.file}</p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Moteur d'analyse</p>
+                  <p style={{ fontWeight: 600, fontFamily: 'monospace', color: 'var(--primary-color)' }}>
+                    {result.engine || 'MobileSec-DeepLearning-v3'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Score de confiance</p>
+                  <p style={{ fontWeight: 600, color: 'var(--success-color)' }}>
+                    {result.confidence ? (result.confidence * 100).toFixed(1) : 'N/A'}%
+                  </p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Heure d'analyse</p>
+                  <p style={{ fontWeight: 600 }}>{result.analysisTime}</p>
+                </div>
+              </div>
+
+              {/* Barre de progression du risque */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>Score de risque</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    {result.risk_score ? (result.risk_score * 100).toFixed(1) : 0}%
+                  </p>
+                </div>
+                <div className="progress-bar">
+                  <div 
+                    className={`progress ${
+                      result.status === 'MALWARE' ? 'bg-danger' : 
+                      result.status === 'SUSPICIOUS' ? 'bg-warning' : 
+                      'bg-success'
+                    }`}
+                    style={{ width: `${Math.max(result.risk_score * 100, 5)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Résumé du statut */}
+              <div style={{ 
+                padding: '1rem', 
+                borderRadius: '0.5rem',
+                background: result.status === 'MALWARE' ? 'rgba(239, 68, 68, 0.1)' : 
+                           result.status === 'SUSPICIOUS' ? 'rgba(234, 179, 8, 0.1)' : 
+                           'rgba(34, 197, 94, 0.1)',
+                borderLeft: `4px solid ${
+                  result.status === 'MALWARE' ? '#ef4444' : 
+                  result.status === 'SUSPICIOUS' ? '#eab308' : 
+                  '#22c55e'
+                }`
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <Shield size={18} style={{ marginTop: '0.125rem', flexShrink: 0 }} />
+                  <div>
+                    <h4 style={{ fontWeight: 600, marginBottom: '0.5rem', marginTop: 0 }}>Résumé de l'analyse</h4>
+                    <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.6 }}>
+                      {result.status === 'SECURE' && 
+                        "L'analyse approfondie des permissions n'a révélé aucun schéma correspondant aux malwares connus. Ce fichier est sûr pour l'installation."}
+                      {result.status === 'SUSPICIOUS' && 
+                        "L'IA a détecté une combinaison de permissions inhabituellement rare dans les applications légitimes. Procédez avec prudence et vérifiez la source."}
+                      {result.status === 'MALWARE' && 
+                        "Attention ! Ce fichier contient des schémas caractéristiques des malwares. La présence de permissions critiques et de comportements suspects indique une menace probable."}
+                      {!result.status && "Analyse complétée. Vérifiez les détails ci-dessus."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informations supplémentaires si disponibles */}
+              {result.permissions && result.permissions.length > 0 && (
+                <div style={{ marginTop: '1.5rem' }}>
+                  <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: 600 }}>Permissions détectées</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {result.permissions.slice(0, 10).map((perm, idx) => (
+                      <span key={idx} className="badge badge-info" style={{ fontSize: '0.8rem' }}>
+                        {perm}
+                      </span>
+                    ))}
+                    {result.permissions.length > 10 && (
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', alignSelf: 'center' }}>
+                        +{result.permissions.length - 10} autres
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommandations */}
+              <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '0.5rem' }}>
+                <h4 style={{ fontWeight: 600, marginBottom: '0.5rem', marginTop: 0 }}>
+                  💡 Recommandations
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                  {result.status === 'SECURE' ? (
+                    <li>Ce fichier peut être installé en toute confiance</li>
+                  ) : result.status === 'SUSPICIOUS' ? (
+                    <>
+                      <li>Vérifiez la source de l'application</li>
+                      <li>Consultez les avis utilisateurs avant d'installer</li>
+                      <li>Envisagez d'utiliser une sandbox de test</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>N'installez PAS ce fichier</li>
+                      <li>Isolez l'appareil si vous l'avez déjà installé</li>
+                      <li>Signalez l'APK aux autorités de sécurité</li>
+                      <li>Scannez votre appareil avec un antivirus</li>
+                    </>
+                  )}
+                </ul>
               </div>
             </div>
           </div>
