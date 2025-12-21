@@ -54,9 +54,7 @@ const APKScannerPage = () => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://localhost:8001/scan', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await axios.post('http://localhost:8001/scan', formData);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors du scan de l\'APK');
