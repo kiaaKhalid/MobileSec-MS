@@ -32,9 +32,7 @@ const NetworkInspectorPage = () => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://localhost:8004/scan', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await axios.post('http://localhost:8004/scan', formData);
       
       if (response.data.job_id) {
         const jobResponse = await axios.get(`http://localhost:8004/scan/${response.data.job_id}`);
