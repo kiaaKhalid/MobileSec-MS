@@ -10,7 +10,15 @@
 
 MobileSec-MS est une plateforme DevSecOps complète qui automatise la détection de vulnérabilités dans les applications mobiles. Elle détecte les failles OWASP MAS (Mobile Application Security), propose des correctifs et s'intègre dans vos pipelines CI/CD.
 
-## 🏗️ Architecture
+## � Démo
+
+Voici un aperçu des fonctionnalités principales :
+
+> **Note :** GitHub n'affiche pas directement le lecteur vidéo pour les fichiers stockés dans le dépôt.
+> 
+> [**🎥 Cliquez ici pour télécharger et voir la vidéo de démonstration (demo.mov)**](./demo.mov)
+
+## �🏗️ Architecture
 
 La plateforme est composée de 7 microservices indépendants :
 
