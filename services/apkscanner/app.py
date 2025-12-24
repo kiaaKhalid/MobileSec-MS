@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os, tempfile, uuid, traceback
 from androguard.core.apk import APK
 from xml.etree import ElementTree as ET
-from utils import init_db, save_scan_result, update_status, get_scan
+from utils import init_db, save_scan_result, update_status, get_scan, get_all_scans
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -163,6 +163,14 @@ def get_job(job_id):
     if not s:
         return jsonify({"error":"not found"}), 404
     return jsonify(s)
+
+@app.route("/scans", methods=["GET"])
+def list_scans():
+    try:
+        scans = get_all_scans()
+        return jsonify(scans)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
