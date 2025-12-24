@@ -86,13 +86,15 @@ def extract_vector(apk_path):
         a = APK(apk_path)
         perms = a.get_permissions()
         vec = np.zeros((1, len(ALL_PERMISSIONS)))
+        detected_perms = []
         for p in perms:
             if p in ALL_PERMISSIONS:
                 vec[0, ALL_PERMISSIONS.index(p)] = 1
-        return vec
+                detected_perms.append(p)
+        return vec, detected_perms
     except Exception as e:
         print(f"Error parsing APK: {e}")
-        return None
+        return None, []
 
 @app.post("/scan")
 async def scan_apk(file: UploadFile = File(...)):
@@ -101,7 +103,7 @@ async def scan_apk(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        vec = extract_vector(filename)
+        vec, detected_perms = extract_vector(filename)
         if vec is None:
             raise HTTPException(status_code=400, detail="Invalid APK")
         
@@ -112,11 +114,17 @@ async def scan_apk(file: UploadFile = File(...)):
         if score > 0.8: status = "MALWARE"
         elif score > 0.3: status = "SUSPICIOUS"
 
+        # Calcul d'un score de confiance basique (distance par rapport au seuil d'incertitude 0.5)
+        # Plus on est proche de 0 ou 1, plus on est confiant.
+        confidence = abs(score - 0.5) * 2
+
         return {
             "service": "aiscanner",
             "file": file.filename,
             "risk_score": score,
-            "status": status
+            "confidence": confidence,
+            "status": status,
+            "permissions": detected_perms
         }
     finally:
         if os.path.exists(filename):
