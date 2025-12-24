@@ -977,3 +977,8 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: var(--danger);
 }
+
+/* Utility Backgrounds */
+.bg-success { background: var(--success) !important; }
+.bg-warning { background: var(--warning) !important; }
+.bg-danger { background: var(--danger) !important; }
