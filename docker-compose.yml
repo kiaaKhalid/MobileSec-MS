@@ -65,6 +65,7 @@ services:
       - "8004:8004"
     volumes:
       - network-storage:/app/storage
+      - ./services/networkinspector:/app
     environment:
       - PORT=8004
       - DB_PATH=/app/storage/networkinspector.db
