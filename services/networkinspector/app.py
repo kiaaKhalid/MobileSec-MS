@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os, uuid, json, datetime
-from utils import init_db, save_scan, get_scan_result
+from utils import init_db, save_scan, get_scan_result, get_all_scans
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -63,23 +63,45 @@ def analyze_network_behavior(apk_info):
 def health():
     return jsonify({"status": "ok", "service": "networkinspector"})
 
+from androguard.core.apk import APK
+import tempfile
+
 @app.route("/scan", methods=["POST"])
 def scan():
     """
     Endpoint pour démarrer une analyse réseau.
-    En production, ceci lancerait:
-    1. Un émulateur Android (AVD)
-    2. mitmproxy configuré
-    3. Installation et exécution de l'APK
-    4. Capture du trafic
+    Supporte l'upload de fichier (multipart/form-data) ou JSON metadata.
     """
+    save_path = None
     try:
-        # Récupération des métadonnées depuis APKScanner
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "no data provided"}), 400
+        apk_info = {}
         
-        apk_info = data.get("apk_info", {})
+        # Cas 1: Upload de fichier
+        if 'file' in request.files:
+            f = request.files['file']
+            if f.filename == '':
+                return jsonify({"error": "no file selected"}), 400
+            
+            # Sauvegarde temporaire pour analyse basique (package name)
+            filename = f.filename or f"{uuid.uuid4().hex}.apk"
+            temp_dir = tempfile.gettempdir()
+            save_path = os.path.join(temp_dir, filename)
+            f.save(save_path)
+            
+            try:
+                a = APK(save_path)
+                apk_info["package"] = a.get_package()
+            except Exception as e:
+                print(f"Error extracting info from APK: {e}")
+                apk_info["package"] = "unknown_parse_error"
+                
+        # Cas 2: JSON metadata
+        elif request.is_json:
+            data = request.get_json()
+            apk_info = data.get("apk_info", {})
+        else:
+             return jsonify({"error": "Unsupported Media Type. Expected 'multipart/form-data' (file) or 'application/json'"}), 415
+
         job_id = "network-" + uuid.uuid4().hex
         
         save_scan(job_id, apk_info.get("package", "unknown"), "running", [])
@@ -92,11 +114,21 @@ def scan():
             "job_id": job_id,
             "status": "done",
             "issues_count": len(issues),
-            "note": "Network analysis simulated. Production version requires AVD + mitmproxy"
-        }), 200
-        
+            "note": "Network analysis simulated. Production version requires AVD + mitmproxy",
+            "package_name": apk_info.get("package", "unknown") 
+        }), 200 # 202 is typical for async, but here we return result directly, or just job_id? Frontend waits for job_id then GETs it.
+        # Frontend code: const response = await axios.post(...) then axios.get(...)
+        # So returning 200 with job_id is fine.
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+    finally:
+        if save_path and os.path.exists(save_path):
+             try:
+                 os.remove(save_path)
+             except:
+                 pass
 
 @app.route("/scan/<job_id>", methods=["GET"])
 def get_result(job_id):
@@ -104,6 +136,14 @@ def get_result(job_id):
     if not res:
         return jsonify({"error": "not found"}), 404
     return jsonify(res)
+
+@app.route("/scans", methods=["GET"])
+def list_scans():
+    try:
+        scans = get_all_scans()
+        return jsonify(scans)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
