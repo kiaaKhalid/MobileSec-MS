@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os, uuid, re, hashlib, traceback
 from androguard.core.apk import APK
 from androguard.core.dex import DEX
-from utils import init_db, save_result, get_result
+from utils import init_db, save_result, get_result, get_all_scans
 from signatures import scan_string
 
 app = Flask(__name__)
@@ -84,6 +84,14 @@ def get_scan(job_id):
     if not res:
         return jsonify({"error": "not found"}), 404
     return jsonify(res)
+
+@app.route("/scans", methods=["GET"])
+def list_scans():
+    try:
+        scans = get_all_scans()
+        return jsonify(scans)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
