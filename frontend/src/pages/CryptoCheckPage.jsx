@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Upload, Shield, Lock } from 'lucide-react';
 import axios from 'axios';
+import { useGlobalState } from '../context/GlobalStateContext';
 
 const CryptoCheckPage = () => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const { updateJobId } = useGlobalState();
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -35,8 +37,9 @@ const CryptoCheckPage = () => {
       const response = await axios.post('http://localhost:8003/scan', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
+
       if (response.data.job_id) {
+        updateJobId('cryptocheck', response.data.job_id);
         const jobResponse = await axios.get(`http://localhost:8003/scan/${response.data.job_id}`);
         setResult(jobResponse.data);
       } else {

@@ -89,13 +89,13 @@ const AIScannerPage = () => {
   // Configuration des badges selon le statut
   const getStatusConfig = (status) => {
     switch (status) {
-      case 'MALWARE': 
+      case 'MALWARE':
         return 'badge-critical';
-      case 'SUSPICIOUS': 
+      case 'SUSPICIOUS':
         return 'badge-warning';
-      case 'SECURE': 
+      case 'SECURE':
         return 'badge-success';
-      default: 
+      default:
         return 'badge-info';
     }
   };
@@ -103,28 +103,28 @@ const AIScannerPage = () => {
   // Configuration complète du statut avec labels et icons
   const getStatusDetails = (status) => {
     switch (status) {
-      case 'MALWARE': 
+      case 'MALWARE':
         return {
           label: 'MALVEILLANT DÉTECTÉ',
           icon: <AlertTriangle size={20} className="text-red-500" />,
           description: 'Attention ! Ce fichier contient une activité malveillante. Ne pas installer.',
           color: 'text-red-500'
         };
-      case 'SUSPICIOUS': 
+      case 'SUSPICIOUS':
         return {
           label: 'COMPORTEMENT SUSPECT',
           icon: <AlertTriangle size={20} className="text-yellow-500" />,
           description: 'Des schémas suspects ont été détectés. Procédez avec prudence.',
           color: 'text-yellow-500'
         };
-      case 'SECURE': 
+      case 'SECURE':
         return {
           label: 'FICHIER SÉCURISÉ',
           icon: <CheckCircle size={20} className="text-emerald-500" />,
           description: 'L\'analyse n\'a détecté aucune menace. Fichier sûr pour l\'installation.',
           color: 'text-emerald-500'
         };
-      default: 
+      default:
         return {
           label: 'ANALYSE EN ATTENTE',
           icon: <Brain size={20} />,
@@ -181,10 +181,10 @@ const AIScannerPage = () => {
           </div>
 
           {error && (
-            <div style={{ 
-              padding: '1rem', 
-              background: 'rgba(239, 68, 68, 0.1)', 
-              borderRadius: '0.5rem', 
+            <div style={{
+              padding: '1rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              borderRadius: '0.5rem',
               marginTop: '1rem',
               display: 'flex',
               alignItems: 'center',
@@ -241,11 +241,11 @@ const AIScannerPage = () => {
 
             <div className="card-body">
               {/* Informations du fichier */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                gap: '1rem', 
-                marginBottom: '1.5rem' 
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1.5rem'
               }}>
                 <div>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Fichier analysé</p>
@@ -278,40 +278,38 @@ const AIScannerPage = () => {
                   </p>
                 </div>
                 <div className="progress-bar">
-                  <div 
-                    className={`progress ${
-                      result.status === 'MALWARE' ? 'bg-danger' : 
-                      result.status === 'SUSPICIOUS' ? 'bg-warning' : 
-                      'bg-success'
-                    }`}
+                  <div
+                    className={`progress-fill ${result.status === 'MALWARE' ? 'bg-danger' :
+                        result.status === 'SUSPICIOUS' ? 'bg-warning' :
+                          'bg-success'
+                      }`}
                     style={{ width: `${Math.max(result.risk_score * 100, 5)}%` }}
                   />
                 </div>
               </div>
 
               {/* Résumé du statut */}
-              <div style={{ 
-                padding: '1rem', 
+              <div style={{
+                padding: '1rem',
                 borderRadius: '0.5rem',
-                background: result.status === 'MALWARE' ? 'rgba(239, 68, 68, 0.1)' : 
-                           result.status === 'SUSPICIOUS' ? 'rgba(234, 179, 8, 0.1)' : 
-                           'rgba(34, 197, 94, 0.1)',
-                borderLeft: `4px solid ${
-                  result.status === 'MALWARE' ? '#ef4444' : 
-                  result.status === 'SUSPICIOUS' ? '#eab308' : 
-                  '#22c55e'
-                }`
+                background: result.status === 'MALWARE' ? 'rgba(239, 68, 68, 0.1)' :
+                  result.status === 'SUSPICIOUS' ? 'rgba(234, 179, 8, 0.1)' :
+                    'rgba(34, 197, 94, 0.1)',
+                borderLeft: `4px solid ${result.status === 'MALWARE' ? '#ef4444' :
+                    result.status === 'SUSPICIOUS' ? '#eab308' :
+                      '#22c55e'
+                  }`
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                   <Shield size={18} style={{ marginTop: '0.125rem', flexShrink: 0 }} />
                   <div>
                     <h4 style={{ fontWeight: 600, marginBottom: '0.5rem', marginTop: 0 }}>Résumé de l'analyse</h4>
                     <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.6 }}>
-                      {result.status === 'SECURE' && 
+                      {result.status === 'SECURE' &&
                         "L'analyse approfondie des permissions n'a révélé aucun schéma correspondant aux malwares connus. Ce fichier est sûr pour l'installation."}
-                      {result.status === 'SUSPICIOUS' && 
+                      {result.status === 'SUSPICIOUS' &&
                         "L'IA a détecté une combinaison de permissions inhabituellement rare dans les applications légitimes. Procédez avec prudence et vérifiez la source."}
-                      {result.status === 'MALWARE' && 
+                      {result.status === 'MALWARE' &&
                         "Attention ! Ce fichier contient des schémas caractéristiques des malwares. La présence de permissions critiques et de comportements suspects indique une menace probable."}
                       {!result.status && "Analyse complétée. Vérifiez les détails ci-dessus."}
                     </p>

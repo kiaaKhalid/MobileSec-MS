@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Upload, FileCheck, AlertCircle, Loader } from 'lucide-react';
 import axios from 'axios';
+import { useGlobalState } from '../context/GlobalStateContext';
 
 const APKScannerPage = () => {
   const [file, setFile] = useState(null);
@@ -8,6 +9,7 @@ const APKScannerPage = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [dragging, setDragging] = useState(false);
+  const { updateJobId } = useGlobalState();
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -56,6 +58,9 @@ const APKScannerPage = () => {
     try {
       const response = await axios.post('http://localhost:8001/scan', formData);
       setResult(response.data);
+      if (response.data.job_id) {
+        updateJobId('apkscanner', response.data.job_id);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors du scan de l\'APK');
     } finally {

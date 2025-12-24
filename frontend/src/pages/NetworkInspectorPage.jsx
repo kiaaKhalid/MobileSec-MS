@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Upload, Wifi, Globe } from 'lucide-react';
 import axios from 'axios';
+import { useGlobalState } from '../context/GlobalStateContext';
 
 const NetworkInspectorPage = () => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const { updateJobId } = useGlobalState();
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -33,8 +35,9 @@ const NetworkInspectorPage = () => {
 
     try {
       const response = await axios.post('http://localhost:8004/scan', formData);
-      
+
       if (response.data.job_id) {
+        updateJobId('networkinspector', response.data.job_id);
         const jobResponse = await axios.get(`http://localhost:8004/scan/${response.data.job_id}`);
         setResult(jobResponse.data);
       } else {
