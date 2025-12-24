@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { FileText, Download, Send } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, Download, Send, Zap } from 'lucide-react';
 import axios from 'axios';
+import { useGlobalState } from '../context/GlobalStateContext';
 
 const ReportGenPage = () => {
+  const { jobIds: globalJobIds } = useGlobalState();
   const [jobIds, setJobIds] = useState({
     apk: '',
     secret: '',
@@ -12,6 +14,47 @@ const ReportGenPage = () => {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Auto-fill from global state if available
+    setJobIds(prev => ({
+      ...prev,
+      apk: globalJobIds.apkscanner || prev.apk,
+      secret: globalJobIds.secrethunter || prev.secret,
+      crypto: globalJobIds.cryptocheck || prev.crypto,
+      network: globalJobIds.networkinspector || prev.network
+    }));
+  }, [globalJobIds]);
+
+  const [scanHistory, setScanHistory] = useState({
+    apk: [],
+    secret: [],
+    crypto: [],
+    network: []
+  });
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const [apkRes, secretRes, cryptoRes, networkRes] = await Promise.allSettled([
+          axios.get('http://localhost:8001/scans').catch(() => ({ data: [] })),
+          axios.get('http://localhost:8002/scans').catch(() => ({ data: [] })),
+          axios.get('http://localhost:8003/scans').catch(() => ({ data: [] })),
+          axios.get('http://localhost:8004/scans').catch(() => ({ data: [] }))
+        ]);
+
+        setScanHistory({
+          apk: apkRes.status === 'fulfilled' ? apkRes.value.data : [],
+          secret: secretRes.status === 'fulfilled' ? secretRes.value.data : [],
+          crypto: cryptoRes.status === 'fulfilled' ? cryptoRes.value.data : [],
+          network: networkRes.status === 'fulfilled' ? networkRes.value.data : []
+        });
+      } catch (e) {
+        console.error("Error fetching scan history", e);
+      }
+    };
+    fetchHistory();
+  }, []);
 
   const handleInputChange = (e) => {
     setJobIds({ ...jobIds, [e.target.name]: e.target.value });
@@ -24,10 +67,12 @@ const ReportGenPage = () => {
 
     try {
       const response = await axios.post('http://localhost:8005/generate', {
-        apk_job_id: jobIds.apk || undefined,
-        secret_job_id: jobIds.secret || undefined,
-        crypto_job_id: jobIds.crypto || undefined,
-        network_job_id: jobIds.network || undefined,
+        job_ids: {
+          apkscanner: jobIds.apk || undefined,
+          secrethunter: jobIds.secret || undefined,
+          cryptocheck: jobIds.crypto || undefined,
+          networkinspector: jobIds.network || undefined
+        },
         format: 'json'
       });
       setReport(response.data);
@@ -38,9 +83,12 @@ const ReportGenPage = () => {
     }
   };
 
+  // Check if we have enough data to suggest auto-generation
+  const canAutoGenerate = jobIds.apk || jobIds.secret || jobIds.crypto || jobIds.network;
+
   const downloadReport = () => {
     if (!report) return;
-    
+
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -62,17 +110,37 @@ const ReportGenPage = () => {
       <div className="card">
         <div className="card-header">
           <h2 className="card-title">Générer un Rapport</h2>
+          {canAutoGenerate && (
+            <div className="badge badge-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
+              <Zap size={14} />
+              Données d'analyse détectées
+            </div>
+          )}
         </div>
         <div className="card-body">
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-            Entrez les Job IDs de vos analyses précédentes pour générer un rapport consolidé.
+            Les champs ci-dessous se remplissent automatiquement si vous avez effectué des analyses récemment.
           </p>
 
           <div style={{ display: 'grid', gap: '1rem' }}>
+            {/* APK Scanner Input */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                APK Scanner Job ID
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontWeight: 500 }}>APK Scanner Job ID</label>
+                {scanHistory.apk.length > 0 && (
+                  <select
+                    onChange={(e) => setJobIds({ ...jobIds, apk: e.target.value })}
+                    style={{ padding: '0.25rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
+                  >
+                    <option value="">-- Historique --</option>
+                    {scanHistory.apk.map(scan => (
+                      <option key={scan.id} value={scan.id}>
+                        {new Date(scan.created_at).toLocaleTimeString()} - {scan.package_name || scan.filename}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <input
                 type="text"
                 name="apk"
@@ -91,10 +159,24 @@ const ReportGenPage = () => {
               />
             </div>
 
+            {/* Secret Hunter Input */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                Secret Hunter Job ID
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontWeight: 500 }}>Secret Hunter Job ID</label>
+                {scanHistory.secret.length > 0 && (
+                  <select
+                    onChange={(e) => setJobIds({ ...jobIds, secret: e.target.value })}
+                    style={{ padding: '0.25rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
+                  >
+                    <option value="">-- Historique --</option>
+                    {scanHistory.secret.map(scan => (
+                      <option key={scan.id} value={scan.id}>
+                        {new Date(scan.created_at).toLocaleTimeString()} - {scan.filename}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <input
                 type="text"
                 name="secret"
@@ -113,10 +195,24 @@ const ReportGenPage = () => {
               />
             </div>
 
+            {/* Crypto Check Input */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                Crypto Check Job ID
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontWeight: 500 }}>Crypto Check Job ID</label>
+                {scanHistory.crypto.length > 0 && (
+                  <select
+                    onChange={(e) => setJobIds({ ...jobIds, crypto: e.target.value })}
+                    style={{ padding: '0.25rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
+                  >
+                    <option value="">-- Historique --</option>
+                    {scanHistory.crypto.map(scan => (
+                      <option key={scan.id} value={scan.id}>
+                        {new Date(scan.created_at).toLocaleTimeString()} - {scan.filename}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <input
                 type="text"
                 name="crypto"
@@ -135,10 +231,24 @@ const ReportGenPage = () => {
               />
             </div>
 
+            {/* Network Inspector Input */}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                Network Inspector Job ID
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontWeight: 500 }}>Network Inspector Job ID</label>
+                {scanHistory.network.length > 0 && (
+                  <select
+                    onChange={(e) => setJobIds({ ...jobIds, network: e.target.value })}
+                    style={{ padding: '0.25rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
+                  >
+                    <option value="">-- Historique --</option>
+                    {scanHistory.network.map(scan => (
+                      <option key={scan.id} value={scan.id}>
+                        {new Date(scan.created_at).toLocaleTimeString()} - {scan.package_name || "Unknown"}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <input
                 type="text"
                 name="network"
