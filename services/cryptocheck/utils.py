@@ -35,3 +35,21 @@ def get_scan_result(scan_id):
             "created_at": r[3],
             "findings": json.loads(r[4]) if r[4] else []
         }
+
+def get_all_scans(limit=50):
+    with ENGINE.connect() as conn:
+        rows = conn.execute(
+            text("SELECT id, filename, status, created_at FROM crypto_scans ORDER BY created_at DESC LIMIT :limit"),
+            {"limit": limit}
+        ).fetchall()
+        
+        return [
+            {
+                "id": r[0],
+                "filename": r[1],
+                "status": r[2],
+                "created_at": r[3]
+            }
+            for r in rows
+        ]
+
