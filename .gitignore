@@ -63,3 +63,7 @@ security-report*.json
 tmp/
 temp/
 *.tmp
+
+# Media
+*.mov
+*.mp4
