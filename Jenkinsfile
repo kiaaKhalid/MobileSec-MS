@@ -2,25 +2,30 @@ pipeline {
     agent any
 
     environment {
-        MOBILESEC_URL = 'http://mobilesec-ms:8000' // Base URL of your MobileSec platform
-        APP_NAME = 'my-android-app'
+        // Jenkins tourne sur Mac, MobileSec aussi (ports 8001, 8005...) -> localhost est parfait.
+        MOBILESEC_URL = 'http://localhost:8000' 
+    }
+
+    parameters {
+        string(name: 'APK_PATH', defaultValue: '/Users/kiaakhalidgmail/Project/MobileSec-MS/examples/apks/Hunter.apk', description: 'Chemin ABSOLU vers votre APK local. Par défaut: Hunter.apk')
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
+        // --- PAS D'ETAPE CHECKOUT (car on est en mode Script direct) ---
 
         stage('Build APK') {
             steps {
                 script {
-                    echo "Building APK..."
-                    // Simulation: In a real project, run ./gradlew assembleRelease
-                    sh 'mkdir -p build/outputs/apk/release'
-                    sh 'touch build/outputs/apk/release/app-release.apk' 
-                    // Ensure you have a real APK for testing or use a dummy file
+                    if (params.APK_PATH != '' && fileExists(params.APK_PATH)) {
+                        echo "Utilisation de l'APK réel : ${params.APK_PATH}"
+                        sh "mkdir -p build/outputs/apk/release"
+                        sh "cp '${params.APK_PATH}' build/outputs/apk/release/app-release.apk"
+                    } else {
+                        echo "⚠️ FICHIER NON TROUVÉ : ${params.APK_PATH}"
+                        echo "-> Création d'un APK vide pour simuler le pipeline."
+                        sh 'mkdir -p build/outputs/apk/release'
+                        sh 'touch build/outputs/apk/release/app-release.apk' 
+                    }
                 }
             }
         }
@@ -67,21 +72,15 @@ pipeline {
                 script {
                     def criticalIssues = sh(script: "cat security_report.json | jq '.summary.critical'", returnStdout: true).trim()
                     
-                    echo "Critical Issues Found: ${criticalIssues}"
+                    echo "Failles Critiques: ${criticalIssues}"
                     
                     if (criticalIssues.toInteger() > 0) {
-                        error "Security Gate Failed: ${criticalIssues} critical issues detected."
+                        error "ECHEC: ${criticalIssues} failles critiques détectées !"
                     } else {
-                        echo "Security Gate Passed."
+                        echo "SUCCES: Aucune faille critique."
                     }
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            archiveArtifacts artifacts: 'security_report.json', allowEmptyArchive: true
         }
     }
 }
