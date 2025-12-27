@@ -157,6 +157,21 @@ services:
     networks:
       - mobilesec-network
 
+  sonarqube:
+    image: sonarqube:community
+    container_name: mobilesec-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - mobilesec-network
+    restart: unless-stopped
+
   frontend:
     build: ./frontend
     ports:
@@ -180,6 +195,9 @@ volumes:
   secret-storage:
   crypto-storage:
   network-storage:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
 
 networks:
   mobilesec-network:

@@ -30,6 +30,26 @@ pipeline {
             }
         }
 
+        stage('Code Quality') {
+            steps {
+                script {
+                    echo "🚀 Lancement de l'Analyse SonarQube..."
+                    // Utilisation de l'image sonar-scanner pour analyser le code
+                    // On connecte le conteneur au réseau mobilesec-network pour qu'il voit le serveur sonarqube
+                    // On pointe vers http://sonarqube:9000 car ils sont sur le même réseau Docker
+                    sh """
+                        docker run --rm \
+                        --network mobilesec-network \
+                        -e SONAR_HOST_URL=http://sonarqube:9000 \
+                        -e SONAR_LOGIN=\${SONAR_TOKEN} \
+                        -v "\$(pwd):/usr/src" \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=mobilesec-ms
+                    """
+                }
+            }
+        }
+
         stage('Security Scan') {
             steps {
                 script {
